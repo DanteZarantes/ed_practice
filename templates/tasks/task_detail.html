@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ task.title }} - TaskFlow{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+        <div class="detail-card animate-in">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-start mb-4">
+                <div>
+                    <h2 class="fw-bold mb-2" style="color: var(--text-primary);">{{ task.title }}</h2>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge-priority badge-{{ task.priority }}">{{ task.get_priority_display }}</span>
+                        <span class="badge-status badge-{{ task.status }}">{{ task.get_status_display }}</span>
+                        <span class="badge-category">{{ task.get_category_display }}</span>
+                        {% if task.is_overdue %}
+                        <span class="badge-priority badge-high">Overdue</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="task-actions d-flex gap-2">
+                    <a href="{% url 'task_edit' task.pk %}" class="btn btn-edit" title="Edit" aria-label="Edit task">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <a href="{% url 'task_delete' task.pk %}" class="btn btn-delete" title="Delete" aria-label="Delete task">
+                        <i class="bi bi-trash3"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Description -->
+            {% if task.description %}
+            <div class="mb-4 p-3" style="background: var(--bg-input); border-radius: 12px; border: 1px solid var(--border-color);">
+                <div class="detail-label">Description</div>
+                <div style="color: var(--text-secondary);">{{ task.description|linebreaks }}</div>
+            </div>
+            {% endif %}
+
+            <!-- Details Grid -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="detail-label">Priority</div>
+                    <div class="detail-value">
+                        <i class="bi bi-flag-fill me-1 {% if task.priority == 'high' %}text-danger{% elif task.priority == 'medium' %}text-warning{% else %}{% endif %}" {% if task.priority == 'low' %}style="color: var(--green-primary);"{% endif %}></i>
+                        {{ task.get_priority_display }}
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="detail-label">Status</div>
+                    <div class="detail-value">{{ task.get_status_display }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="detail-label">Category</div>
+                    <div class="detail-value">{{ task.get_category_display }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="detail-label">Due Date</div>
+                    <div class="detail-value {% if task.is_overdue %}{% endif %}" {% if task.is_overdue %}style="color: var(--accent-red);"{% endif %}>
+                        {% if task.due_date %}{{ task.due_date|date:"M d, Y" }}{% else %}<span style="color: var(--text-muted);">Not set</span>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timestamps -->
+            <div class="border-top pt-3">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="detail-label">Created</div>
+                        <div class="small" style="color: var(--text-muted);">{{ task.created_at|date:"M d, Y H:i" }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="detail-label">Last Updated</div>
+                        <div class="small" style="color: var(--text-muted);">{{ task.updated_at|date:"M d, Y H:i" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex gap-3 justify-content-center mt-4 pt-3 border-top">
+                <a href="{% url 'task_list' %}" class="btn btn-cancel">
+                    <i class="bi bi-arrow-left me-1"></i> Back
+                </a>
+                <form method="post" action="{% url 'task_toggle' task.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-submit">
+                        {% if task.completed %}
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Mark Incomplete
+                        {% else %}
+                        <i class="bi bi-check-lg me-1"></i> Mark Complete
+                        {% endif %}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

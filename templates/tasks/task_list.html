@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}TaskFlow - Your Tasks{% endblock %}
+
+{% block content %}
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card total animate-in">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-number">{{ total_tasks }}</div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div class="stat-icon">
+                    <i class="bi bi-layers"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card pending animate-in" style="animation-delay: 0.1s;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-number">{{ pending_tasks }}</div>
+                    <div class="stat-label">To Do</div>
+                </div>
+                <div class="stat-icon">
+                    <i class="bi bi-clock"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card in-progress animate-in" style="animation-delay: 0.2s;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-number">{{ in_progress_tasks }}</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+                <div class="stat-icon">
+                    <i class="bi bi-arrow-repeat"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card done animate-in" style="animation-delay: 0.3s;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-number">{{ completed_tasks }}</div>
+                    <div class="stat-label">Done</div>
+                </div>
+                <div class="stat-icon">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search & Filters -->
+<div class="filter-section animate-in" style="animation-delay: 0.4s;">
+    <form method="get" action="{% url 'task_list' %}">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text" style="border-radius: 50px 0 0 50px;">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" name="q" class="form-control search-input" style="border-radius: 0 50px 50px 0; border-left: none !important;" placeholder="Search tasks..." value="{{ query }}">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select filter-select">
+                    <option value="">All Status</option>
+                    <option value="todo" {% if status_filter == 'todo' %}selected{% endif %}>To Do</option>
+                    <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>In Progress</option>
+                    <option value="done" {% if status_filter == 'done' %}selected{% endif %}>Done</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="priority" class="form-select filter-select">
+                    <option value="">All Priority</option>
+                    <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
+                    <option value="medium" {% if priority_filter == 'medium' %}selected{% endif %}>Medium</option>
+                    <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="category" class="form-select filter-select">
+                    <option value="">All Categories</option>
+                    <option value="work" {% if category_filter == 'work' %}selected{% endif %}>Work</option>
+                    <option value="personal" {% if category_filter == 'personal' %}selected{% endif %}>Personal</option>
+                    <option value="study" {% if category_filter == 'study' %}selected{% endif %}>Study</option>
+                    <option value="health" {% if category_filter == 'health' %}selected{% endif %}>Health</option>
+                    <option value="other" {% if category_filter == 'other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-submit w-100">
+                    <i class="bi bi-funnel me-1"></i> Filter
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Task List -->
+{% if tasks %}
+<div class="tasks-container">
+    {% for task in tasks %}
+    <div class="task-card priority-{{ task.priority }} {% if task.completed %}completed{% endif %} animate-in" style="animation-delay: {{ forloop.counter0 }}00ms;">
+        <div class="row align-items-center">
+            <div class="col-md-7">
+                <div class="d-flex align-items-start">
+                    <form method="post" action="{% url 'task_toggle' task.pk %}" class="me-3 mt-1">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-toggle" title="Toggle complete" aria-label="Toggle task completion">
+                            {% if task.completed %}
+                                <i class="bi bi-check-lg"></i>
+                            {% else %}
+                                <i class="bi bi-circle"></i>
+                            {% endif %}
+                        </button>
+                    </form>
+                    <div>
+                        <h5 class="task-title mb-1">{{ task.title }}</h5>
+                        {% if task.description %}
+                        <p class="task-description mb-2">{{ task.description|truncatewords:20 }}</p>
+                        {% endif %}
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge-priority badge-{{ task.priority }}">{{ task.get_priority_display }}</span>
+                            <span class="badge-status badge-{{ task.status }}">{{ task.get_status_display }}</span>
+                            <span class="badge-category">{{ task.get_category_display }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 text-md-center mt-3 mt-md-0">
+                {% if task.due_date %}
+                <div class="due-date {% if task.is_overdue %}overdue{% endif %}">
+                    <i class="bi bi-calendar-event me-1"></i>
+                    {% if task.is_overdue %}Overdue: {% endif %}{{ task.due_date|date:"M d, Y" }}
+                </div>
+                {% endif %}
+                <div class="due-date mt-1">
+                    <i class="bi bi-clock-history me-1"></i>{{ task.created_at|date:"M d, Y" }}
+                </div>
+            </div>
+            <div class="col-md-2 text-md-end mt-3 mt-md-0">
+                <div class="task-actions d-flex gap-1 justify-content-md-end">
+                    <a href="{% url 'task_detail' task.pk %}" class="btn btn-view" title="View" aria-label="View task details">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                    <a href="{% url 'task_edit' task.pk %}" class="btn btn-edit" title="Edit" aria-label="Edit task">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <a href="{% url 'task_delete' task.pk %}" class="btn btn-delete" title="Delete" aria-label="Delete task">
+                        <i class="bi bi-trash3"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state animate-in">
+    <i class="bi bi-inbox"></i>
+    <h4>No tasks found</h4>
+    <p>{% if query or status_filter or priority_filter or category_filter %}Try adjusting your filters{% else %}Create your first task to get started{% endif %}</p>
+    {% if not query and not status_filter and not priority_filter and not category_filter %}
+    <a href="{% url 'task_create' %}" class="btn btn-submit mt-3 pulse-glow">
+        <i class="bi bi-plus-lg me-1"></i> Create First Task
+    </a>
+    {% else %}
+    <a href="{% url 'task_list' %}" class="btn btn-cancel mt-3">
+        <i class="bi bi-x-lg me-1"></i> Clear Filters
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

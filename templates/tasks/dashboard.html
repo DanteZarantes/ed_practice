@@ -1,0 +1,455 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - TaskFlow{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold" style="color: var(--text-primary);">
+        <i class="bi bi-bar-chart me-2" style="color: var(--green-primary);"></i>Dashboard
+    </h2>
+    <a href="{% url 'task_list' %}" class="btn btn-cancel">
+        <i class="bi bi-arrow-left me-1"></i> Back to Tasks
+    </a>
+</div>
+
+<!-- Completion Ring + Stats -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="chart-card text-center animate-in">
+            <h5><i class="bi bi-trophy me-2" style="color: var(--green-primary);"></i>Completion Rate</h5>
+            <div id="completion-ring" style="height: 220px;"></div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="chart-card animate-in" style="animation-delay: 0.1s;">
+            <h5><i class="bi bi-pie-chart me-2" style="color: var(--accent-blue);"></i>By Status</h5>
+            <div id="status-chart" style="height: 220px;"></div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="chart-card animate-in" style="animation-delay: 0.2s;">
+            <h5><i class="bi bi-flag me-2" style="color: var(--accent-amber);"></i>By Priority</h5>
+            <div id="priority-chart" style="height: 220px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Category Bar Chart + Timeline -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="chart-card animate-in" style="animation-delay: 0.3s;">
+            <h5><i class="bi bi-tags me-2" style="color: var(--accent-purple);"></i>Tasks by Category</h5>
+            <div id="category-chart" style="height: 280px;"></div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="chart-card animate-in" style="animation-delay: 0.4s;">
+            <h5><i class="bi bi-graph-up me-2" style="color: var(--green-light);"></i>Task Activity</h5>
+            <div id="timeline-chart" style="height: 280px;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- D3.js -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const colors = {
+    status: { 'todo': '#94a3b8', 'in_progress': '#3b82f6', 'done': '#10b981' },
+    priority: { 'low': '#10b981', 'medium': '#f59e0b', 'high': '#ef4444' },
+    category: { 'work': '#3b82f6', 'personal': '#a78bfa', 'study': '#06b6d4', 'health': '#10b981', 'other': '#f59e0b' }
+};
+
+const labels = {
+    status: { 'todo': 'To Do', 'in_progress': 'In Progress', 'done': 'Done' },
+    priority: { 'low': 'Low', 'medium': 'Medium', 'high': 'High' },
+    category: { 'work': 'Work', 'personal': 'Personal', 'study': 'Study', 'health': 'Health', 'other': 'Other' }
+};
+
+fetch("{% url 'dashboard_data' %}")
+    .then(r => r.json())
+    .then(data => {
+        drawCompletionRing(data.completion);
+        drawDonut('#status-chart', data.status, 'status');
+        drawDonut('#priority-chart', data.priority, 'priority');
+        drawBarChart('#category-chart', data.category, 'category');
+        drawTimeline('#timeline-chart', data.timeline);
+    });
+
+function drawCompletionRing(completion) {
+    const container = d3.select('#completion-ring');
+    const width = container.node().getBoundingClientRect().width;
+    const height = 220;
+    const radius = Math.min(width, height) / 2 - 20;
+
+    const svg = container.append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .append('g')
+        .attr('transform', `translate(${width/2}, ${height/2})`);
+
+    const arc = d3.arc().innerRadius(radius - 18).outerRadius(radius).cornerRadius(10);
+    const bgArc = d3.arc().innerRadius(radius - 18).outerRadius(radius).startAngle(0).endAngle(2 * Math.PI);
+
+    // Background track
+    svg.append('path')
+        .attr('d', bgArc)
+        .attr('fill', '#1f2b3d');
+
+    const endAngle = (completion.rate / 100) * 2 * Math.PI;
+
+    // Gradient
+    const defs = svg.append('defs');
+    const gradient = defs.append('linearGradient').attr('id', 'completionGrad')
+        .attr('x1', '0%').attr('y1', '0%').attr('x2', '100%').attr('y2', '100%');
+    gradient.append('stop').attr('offset', '0%').attr('stop-color', '#10b981');
+    gradient.append('stop').attr('offset', '100%').attr('stop-color', '#34d399');
+
+    // Glow filter
+    const filter = defs.append('filter').attr('id', 'glow');
+    filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'coloredBlur');
+    const feMerge = filter.append('feMerge');
+    feMerge.append('feMergeNode').attr('in', 'coloredBlur');
+    feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+    // Animated arc
+    svg.append('path')
+        .datum({ startAngle: 0, endAngle: 0 })
+        .attr('d', arc)
+        .attr('fill', 'url(#completionGrad)')
+        .style('filter', 'url(#glow)')
+        .transition()
+        .duration(1500)
+        .ease(d3.easeCubicOut)
+        .attrTween('d', function() {
+            const interpolate = d3.interpolate(0, endAngle);
+            return t => arc({ startAngle: 0, endAngle: interpolate(t) });
+        });
+
+    // Percentage text
+    svg.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('dy', '-0.1em')
+        .style('font-size', '2.2rem')
+        .style('font-weight', '800')
+        .style('fill', '#f1f5f9')
+        .text('0%')
+        .transition()
+        .duration(1500)
+        .tween('text', function() {
+            const i = d3.interpolate(0, completion.rate);
+            return t => { this.textContent = Math.round(i(t)) + '%'; };
+        });
+
+    svg.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('dy', '2em')
+        .style('font-size', '0.8rem')
+        .style('fill', '#64748b')
+        .text(`${completion.completed} of ${completion.total} tasks`);
+}
+
+function drawDonut(selector, data, type) {
+    if (!data || data.length === 0) {
+        d3.select(selector).append('div')
+            .attr('class', 'empty-state')
+            .style('padding', '2rem')
+            .html('<i class="bi bi-pie-chart" style="font-size:2rem;color:var(--text-muted);"></i><p style="color:var(--text-muted);margin-top:0.5rem;">No data yet</p>');
+        return;
+    }
+
+    const container = d3.select(selector);
+    const width = container.node().getBoundingClientRect().width;
+    const height = 180;
+    const radius = Math.min(width, height) / 2 - 10;
+
+    const svg = container.append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .append('g')
+        .attr('transform', `translate(${width/2}, ${height/2})`);
+
+    const pie = d3.pie().value(d => d.count).sort(null).padAngle(0.04);
+    const arc = d3.arc().innerRadius(radius * 0.58).outerRadius(radius);
+    const hoverArc = d3.arc().innerRadius(radius * 0.55).outerRadius(radius + 6);
+
+    const arcs = svg.selectAll('.arc')
+        .data(pie(data))
+        .enter().append('g')
+        .attr('class', 'arc');
+
+    arcs.append('path')
+        .attr('d', arc)
+        .attr('fill', d => colors[type][d.data[type]] || '#10b981')
+        .attr('stroke', '#1a2332')
+        .attr('stroke-width', 2)
+        .style('opacity', 0)
+        .style('cursor', 'pointer')
+        .on('mouseenter', function(event, d) {
+            d3.select(this).transition().duration(200).attr('d', hoverArc).style('filter', 'brightness(1.2)');
+        })
+        .on('mouseleave', function(event, d) {
+            d3.select(this).transition().duration(200).attr('d', arc).style('filter', '');
+        })
+        .transition()
+        .duration(800)
+        .delay((d, i) => i * 120)
+        .style('opacity', 1)
+        .attrTween('d', function(d) {
+            const interpolate = d3.interpolate({ startAngle: d.startAngle, endAngle: d.startAngle }, d);
+            return t => arc(interpolate(t));
+        });
+
+    // Legend
+    const legend = container.append('div')
+        .style('display', 'flex')
+        .style('flex-wrap', 'wrap')
+        .style('justify-content', 'center')
+        .style('gap', '10px')
+        .style('margin-top', '12px');
+
+    data.forEach(d => {
+        const key = d[type];
+        legend.append('span')
+            .style('font-size', '0.75rem')
+            .style('color', '#94a3b8')
+            .style('display', 'inline-flex')
+            .style('align-items', 'center')
+            .style('gap', '5px')
+            .html(`<span style="width:8px;height:8px;border-radius:50%;background:${colors[type][key] || '#10b981'};display:inline-block;"></span>${labels[type][key] || key} (${d.count})`);
+    });
+}
+
+function drawBarChart(selector, data, type) {
+    if (!data || data.length === 0) {
+        d3.select(selector).append('div')
+            .attr('class', 'empty-state')
+            .style('padding', '2rem')
+            .html('<i class="bi bi-bar-chart" style="font-size:2rem;color:var(--text-muted);"></i><p style="color:var(--text-muted);margin-top:0.5rem;">No data yet</p>');
+        return;
+    }
+
+    const container = d3.select(selector);
+    const width = container.node().getBoundingClientRect().width - 40;
+    const height = 230;
+    const margin = { top: 20, right: 20, bottom: 40, left: 40 };
+
+    const svg = container.append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom)
+        .append('g')
+        .attr('transform', `translate(${margin.left}, ${margin.top})`);
+
+    const x = d3.scaleBand()
+        .domain(data.map(d => d[type]))
+        .range([0, width])
+        .padding(0.35);
+
+    const y = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.count)])
+        .nice()
+        .range([height, 0]);
+
+    // Grid lines
+    svg.append('g')
+        .call(d3.axisLeft(y).ticks(4).tickSize(-width).tickFormat(''))
+        .selectAll('line')
+        .attr('stroke', '#1f2b3d')
+        .attr('stroke-dasharray', '3,3');
+    svg.selectAll('.domain').remove();
+
+    // X axis
+    svg.append('g')
+        .attr('transform', `translate(0, ${height})`)
+        .call(d3.axisBottom(x).tickFormat(d => labels[type][d] || d))
+        .selectAll('text')
+        .style('font-size', '0.75rem')
+        .style('fill', '#64748b');
+
+    // Y axis
+    svg.append('g')
+        .call(d3.axisLeft(y).ticks(4))
+        .selectAll('text')
+        .style('font-size', '0.75rem')
+        .style('fill', '#64748b');
+
+    svg.selectAll('.domain').attr('stroke', '#2a3a4e');
+    svg.selectAll('.tick line').attr('stroke', '#2a3a4e');
+
+    // Bars with hover
+    svg.selectAll('.bar')
+        .data(data)
+        .enter().append('rect')
+        .attr('class', 'bar')
+        .attr('x', d => x(d[type]))
+        .attr('width', x.bandwidth())
+        .attr('y', height)
+        .attr('height', 0)
+        .attr('rx', 6)
+        .attr('fill', d => colors[type][d[type]] || '#10b981')
+        .style('cursor', 'pointer')
+        .on('mouseenter', function() {
+            d3.select(this).transition().duration(150).style('filter', 'brightness(1.3) drop-shadow(0 0 8px rgba(16,185,129,0.4))');
+        })
+        .on('mouseleave', function() {
+            d3.select(this).transition().duration(150).style('filter', '');
+        })
+        .transition()
+        .duration(800)
+        .delay((d, i) => i * 120)
+        .attr('y', d => y(d.count))
+        .attr('height', d => height - y(d.count));
+
+    // Value labels
+    svg.selectAll('.label')
+        .data(data)
+        .enter().append('text')
+        .attr('x', d => x(d[type]) + x.bandwidth() / 2)
+        .attr('y', d => y(d.count) - 8)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '0.8rem')
+        .style('font-weight', '700')
+        .style('fill', '#f1f5f9')
+        .style('opacity', 0)
+        .text(d => d.count)
+        .transition()
+        .duration(600)
+        .delay((d, i) => i * 120 + 500)
+        .style('opacity', 1);
+}
+
+function drawTimeline(selector, data) {
+    if (!data || data.length === 0) {
+        d3.select(selector).append('div')
+            .attr('class', 'empty-state')
+            .style('padding', '2rem')
+            .html('<i class="bi bi-graph-up" style="font-size:2rem;color:var(--text-muted);"></i><p style="color:var(--text-muted);margin-top:0.5rem;">No activity yet</p>');
+        return;
+    }
+
+    const container = d3.select(selector);
+    const width = container.node().getBoundingClientRect().width - 40;
+    const height = 230;
+    const margin = { top: 20, right: 20, bottom: 40, left: 40 };
+
+    const svg = container.append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom)
+        .append('g')
+        .attr('transform', `translate(${margin.left}, ${margin.top})`);
+
+    const parseDate = d3.timeParse('%Y-%m-%d');
+    data.forEach(d => d.dateObj = parseDate(d.date));
+
+    const x = d3.scaleTime()
+        .domain(d3.extent(data, d => d.dateObj))
+        .range([0, width]);
+
+    const y = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.count)])
+        .nice()
+        .range([height, 0]);
+
+    // Grid
+    svg.append('g')
+        .call(d3.axisLeft(y).ticks(4).tickSize(-width).tickFormat(''))
+        .selectAll('line')
+        .attr('stroke', '#1f2b3d')
+        .attr('stroke-dasharray', '3,3');
+    svg.selectAll('.domain').remove();
+
+    // X axis
+    svg.append('g')
+        .attr('transform', `translate(0, ${height})`)
+        .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat('%b %d')))
+        .selectAll('text')
+        .style('font-size', '0.75rem')
+        .style('fill', '#64748b');
+
+    // Y axis
+    svg.append('g')
+        .call(d3.axisLeft(y).ticks(4))
+        .selectAll('text')
+        .style('font-size', '0.75rem')
+        .style('fill', '#64748b');
+
+    svg.selectAll('.domain').attr('stroke', '#2a3a4e');
+    svg.selectAll('.tick line').attr('stroke', '#2a3a4e');
+
+    // Gradient fill
+    const defs = svg.append('defs');
+    const areaGrad = defs.append('linearGradient')
+        .attr('id', 'timelineGrad')
+        .attr('x1', '0').attr('y1', '0')
+        .attr('x2', '0').attr('y2', '1');
+    areaGrad.append('stop').attr('offset', '0%').attr('stop-color', '#10b981').attr('stop-opacity', 0.3);
+    areaGrad.append('stop').attr('offset', '100%').attr('stop-color', '#10b981').attr('stop-opacity', 0.01);
+
+    // Glow filter
+    const glowFilter = defs.append('filter').attr('id', 'lineGlow');
+    glowFilter.append('feGaussianBlur').attr('stdDeviation', '2').attr('result', 'blur');
+    const merge = glowFilter.append('feMerge');
+    merge.append('feMergeNode').attr('in', 'blur');
+    merge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+    // Area
+    const area = d3.area()
+        .x(d => x(d.dateObj))
+        .y0(height)
+        .y1(d => y(d.count))
+        .curve(d3.curveMonotoneX);
+
+    svg.append('path')
+        .datum(data)
+        .attr('fill', 'url(#timelineGrad)')
+        .attr('d', area)
+        .style('opacity', 0)
+        .transition().duration(1200).style('opacity', 1);
+
+    // Line
+    const line = d3.line()
+        .x(d => x(d.dateObj))
+        .y(d => y(d.count))
+        .curve(d3.curveMonotoneX);
+
+    const path = svg.append('path')
+        .datum(data)
+        .attr('fill', 'none')
+        .attr('stroke', '#10b981')
+        .attr('stroke-width', 3)
+        .style('filter', 'url(#lineGlow)')
+        .attr('d', line);
+
+    const totalLength = path.node().getTotalLength();
+    path.attr('stroke-dasharray', totalLength)
+        .attr('stroke-dashoffset', totalLength)
+        .transition()
+        .duration(1800)
+        .ease(d3.easeCubicOut)
+        .attr('stroke-dashoffset', 0);
+
+    // Dots
+    svg.selectAll('.dot')
+        .data(data)
+        .enter().append('circle')
+        .attr('cx', d => x(d.dateObj))
+        .attr('cy', d => y(d.count))
+        .attr('r', 0)
+        .attr('fill', '#10b981')
+        .attr('stroke', '#1a2332')
+        .attr('stroke-width', 3)
+        .style('cursor', 'pointer')
+        .on('mouseenter', function() {
+            d3.select(this).transition().duration(150).attr('r', 8).style('filter', 'drop-shadow(0 0 6px rgba(16,185,129,0.6))');
+        })
+        .on('mouseleave', function() {
+            d3.select(this).transition().duration(150).attr('r', 5).style('filter', '');
+        })
+        .transition()
+        .duration(400)
+        .delay((d, i) => 1200 + i * 80)
+        .attr('r', 5);
+}
+</script>
+{% endblock %}

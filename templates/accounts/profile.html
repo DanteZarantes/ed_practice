@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile - TaskFlow{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+        <div class="detail-card animate-in">
+            <!-- Profile Header -->
+            <div class="text-center mb-4">
+                <div class="avatar-sm mx-auto mb-3" style="width: 80px; height: 80px; font-size: 1.8rem; background: {{ profile.avatar_color }}; border: 3px solid var(--border-color); box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2);">
+                    {{ profile.initials }}
+                </div>
+                <h3 class="fw-bold mb-1" style="color: var(--text-primary);">{{ user.get_full_name|default:user.username }}</h3>
+                <p style="color: var(--text-muted);" class="mb-0">@{{ user.username }}</p>
+                {% if profile.location %}
+                <p style="color: var(--text-muted);" class="small mt-1"><i class="bi bi-geo-alt me-1"></i>{{ profile.location }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Bio -->
+            {% if profile.bio %}
+            <div class="p-3 mb-4" style="background: var(--bg-input); border-radius: 12px; border: 1px solid var(--border-color);">
+                <p class="mb-0" style="color: var(--text-secondary);">{{ profile.bio }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Stats Grid -->
+            <div class="row g-3 mb-4">
+                <div class="col-3">
+                    <div class="text-center p-3" style="background: rgba(16, 185, 129, 0.05); border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.1);">
+                        <div class="fw-bold fs-4" style="color: var(--green-primary);">{{ stats.total }}</div>
+                        <div class="small" style="color: var(--text-muted);">Total</div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="text-center p-3" style="background: rgba(245, 158, 11, 0.05); border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.1);">
+                        <div class="fw-bold fs-4" style="color: var(--accent-amber);">{{ stats.pending }}</div>
+                        <div class="small" style="color: var(--text-muted);">To Do</div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="text-center p-3" style="background: rgba(59, 130, 246, 0.05); border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.1);">
+                        <div class="fw-bold fs-4" style="color: var(--accent-blue);">{{ stats.in_progress }}</div>
+                        <div class="small" style="color: var(--text-muted);">Active</div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="text-center p-3" style="background: rgba(52, 211, 153, 0.05); border-radius: 12px; border: 1px solid rgba(52, 211, 153, 0.1);">
+                        <div class="fw-bold fs-4" style="color: var(--green-light);">{{ stats.completed }}</div>
+                        <div class="small" style="color: var(--text-muted);">Done</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="detail-label">Email</div>
+                    <div class="detail-value">{{ user.email|default:"Not set" }}</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="detail-label">Member Since</div>
+                    <div class="detail-value">{{ user.date_joined|date:"M d, Y" }}</div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex gap-3 justify-content-center pt-3 border-top">
+                <a href="{% url 'task_list' %}" class="btn btn-cancel">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Tasks
+                </a>
+                <a href="{% url 'profile_edit' %}" class="btn btn-submit">
+                    <i class="bi bi-pencil me-1"></i> Edit Profile
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

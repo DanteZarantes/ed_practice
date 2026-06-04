@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - TaskFlow{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center" style="min-height: 70vh; align-items: center;">
+    <div class="col-md-5 col-lg-4">
+        <div class="form-card animate-in">
+            <div class="text-center mb-4">
+                <div style="width: 56px; height: 56px; border-radius: 14px; background: var(--green-gradient); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; box-shadow: 0 4px 16px var(--green-glow);">
+                    <i class="bi bi-check2" style="font-size: 1.6rem; color: white;"></i>
+                </div>
+                <h3 class="fw-bold" style="color: var(--text-primary);">Welcome Back</h3>
+                <p style="color: var(--text-muted);">Sign in to your TaskFlow account</p>
+            </div>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+
+                {% if form.errors %}
+                <div class="alert alert-danger" style="border-radius: 12px;">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Invalid username or password.
+                </div>
+                {% endif %}
+
+                <div class="mb-3">
+                    <label for="id_username" class="form-label fw-semibold">
+                        <i class="bi bi-person me-1"></i> Username
+                    </label>
+                    <input type="text" name="username" id="id_username" class="form-control" placeholder="Enter username..." required autofocus>
+                </div>
+
+                <div class="mb-4">
+                    <label for="id_password" class="form-label fw-semibold">
+                        <i class="bi bi-lock me-1"></i> Password
+                    </label>
+                    <input type="password" name="password" id="id_password" class="form-control" placeholder="Enter password..." required>
+                </div>
+
+                <button type="submit" class="btn btn-submit w-100 mb-3">
+                    <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+                </button>
+
+                <p class="text-center mb-0" style="color: var(--text-muted);">
+                    Don't have an account? <a href="{% url 'signup' %}" style="color: var(--green-primary); font-weight: 600; text-decoration: none;">Sign Up</a>
+                </p>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
