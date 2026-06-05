@@ -12,22 +12,55 @@
     </a>
 </div>
 
+<!-- Alerts: Overdue & Due Soon -->
+{% if overdue_tasks %}
+<div class="alert animate-in mb-3" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; color: #f87171;">
+    <div class="d-flex align-items-center mb-2">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <strong>{{ overdue_tasks|length }} Overdue Task{{ overdue_tasks|length|pluralize }}</strong>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        {% for task in overdue_tasks %}
+        <a href="{% url 'task_detail' task.pk %}" class="text-decoration-none" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); padding: 0.3rem 0.7rem; border-radius: 8px; font-size: 0.8rem; color: #fca5a5;">
+            {{ task.title }} <span style="opacity: 0.7;">({{ task.due_date|date:"M d" }})</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if due_soon_tasks %}
+<div class="alert animate-in mb-3" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 12px; color: #fbbf24; animation-delay: 0.1s;">
+    <div class="d-flex align-items-center mb-2">
+        <i class="bi bi-alarm-fill me-2"></i>
+        <strong>{{ due_soon_tasks|length }} Task{{ due_soon_tasks|length|pluralize }} Due Soon</strong>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        {% for task in due_soon_tasks %}
+        <a href="{% url 'task_detail' task.pk %}" class="text-decoration-none" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); padding: 0.3rem 0.7rem; border-radius: 8px; font-size: 0.8rem; color: #fde68a;">
+            {{ task.title }} <span style="opacity: 0.7;">({{ task.due_date|date:"M d" }})</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 <!-- Completion Ring + Stats -->
 <div class="row g-4 mb-4">
     <div class="col-md-4">
-        <div class="chart-card text-center animate-in">
+        <div class="chart-card text-center animate-in" style="animation-delay: 0.1s;">
             <h5><i class="bi bi-trophy me-2" style="color: var(--green-primary);"></i>Completion Rate</h5>
             <div id="completion-ring" style="height: 220px;"></div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="chart-card animate-in" style="animation-delay: 0.1s;">
+        <div class="chart-card animate-in" style="animation-delay: 0.2s;">
             <h5><i class="bi bi-pie-chart me-2" style="color: var(--accent-blue);"></i>By Status</h5>
             <div id="status-chart" style="height: 220px;"></div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="chart-card animate-in" style="animation-delay: 0.2s;">
+        <div class="chart-card animate-in" style="animation-delay: 0.3s;">
             <h5><i class="bi bi-flag me-2" style="color: var(--accent-amber);"></i>By Priority</h5>
             <div id="priority-chart" style="height: 220px;"></div>
         </div>
@@ -37,15 +70,48 @@
 <!-- Category Bar Chart + Timeline -->
 <div class="row g-4 mb-4">
     <div class="col-md-6">
-        <div class="chart-card animate-in" style="animation-delay: 0.3s;">
+        <div class="chart-card animate-in" style="animation-delay: 0.4s;">
             <h5><i class="bi bi-tags me-2" style="color: var(--accent-purple);"></i>Tasks by Category</h5>
             <div id="category-chart" style="height: 280px;"></div>
         </div>
     </div>
     <div class="col-md-6">
-        <div class="chart-card animate-in" style="animation-delay: 0.4s;">
+        <div class="chart-card animate-in" style="animation-delay: 0.5s;">
             <h5><i class="bi bi-graph-up me-2" style="color: var(--green-light);"></i>Task Activity</h5>
             <div id="timeline-chart" style="height: 280px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Feed -->
+<div class="row">
+    <div class="col-12">
+        <div class="chart-card animate-in" style="animation-delay: 0.6s;">
+            <h5><i class="bi bi-activity me-2" style="color: var(--green-primary);"></i>Recent Activity</h5>
+            {% if recent_activity %}
+            <div class="activity-feed">
+                {% for activity in recent_activity %}
+                <div class="activity-item">
+                    <div class="activity-icon" style="background: {{ activity.color }}20; color: {{ activity.color }};">
+                        <i class="bi {{ activity.icon }}"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div style="color: var(--text-primary); font-size: 0.85rem;">
+                            <strong>{{ activity.get_action_display }}</strong> "{{ activity.task_title|truncatewords:6 }}"
+                        </div>
+                        <div style="color: var(--text-muted); font-size: 0.75rem;">
+                            {{ activity.timestamp|timesince }} ago
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-4" style="color: var(--text-muted);">
+                <i class="bi bi-clock-history" style="font-size: 2rem;"></i>
+                <p class="mt-2 mb-0">No activity yet. Start creating and completing tasks!</p>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -58,13 +124,13 @@
 const colors = {
     status: { 'todo': '#94a3b8', 'in_progress': '#3b82f6', 'done': '#10b981' },
     priority: { 'low': '#10b981', 'medium': '#f59e0b', 'high': '#ef4444' },
-    category: { 'work': '#3b82f6', 'personal': '#a78bfa', 'study': '#06b6d4', 'health': '#10b981', 'other': '#f59e0b' }
+    category: { 'work': '#3b82f6', 'personal': '#a78bfa', 'study': '#06b6d4', 'health': '#10b981', 'finance': '#f59e0b', 'other': '#94a3b8' }
 };
 
 const labels = {
     status: { 'todo': 'To Do', 'in_progress': 'In Progress', 'done': 'Done' },
     priority: { 'low': 'Low', 'medium': 'Medium', 'high': 'High' },
-    category: { 'work': 'Work', 'personal': 'Personal', 'study': 'Study', 'health': 'Health', 'other': 'Other' }
+    category: { 'work': 'Work', 'personal': 'Personal', 'study': 'Study', 'health': 'Health', 'finance': 'Finance', 'other': 'Other' }
 };
 
 fetch("{% url 'dashboard_data' %}")
@@ -92,28 +158,22 @@ function drawCompletionRing(completion) {
     const arc = d3.arc().innerRadius(radius - 18).outerRadius(radius).cornerRadius(10);
     const bgArc = d3.arc().innerRadius(radius - 18).outerRadius(radius).startAngle(0).endAngle(2 * Math.PI);
 
-    // Background track
-    svg.append('path')
-        .attr('d', bgArc)
-        .attr('fill', '#1f2b3d');
+    svg.append('path').attr('d', bgArc).attr('fill', 'var(--border-color)');
 
     const endAngle = (completion.rate / 100) * 2 * Math.PI;
 
-    // Gradient
     const defs = svg.append('defs');
     const gradient = defs.append('linearGradient').attr('id', 'completionGrad')
         .attr('x1', '0%').attr('y1', '0%').attr('x2', '100%').attr('y2', '100%');
     gradient.append('stop').attr('offset', '0%').attr('stop-color', '#10b981');
     gradient.append('stop').attr('offset', '100%').attr('stop-color', '#34d399');
 
-    // Glow filter
     const filter = defs.append('filter').attr('id', 'glow');
     filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'coloredBlur');
     const feMerge = filter.append('feMerge');
     feMerge.append('feMergeNode').attr('in', 'coloredBlur');
     feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
 
-    // Animated arc
     svg.append('path')
         .datum({ startAngle: 0, endAngle: 0 })
         .attr('d', arc)
@@ -127,13 +187,12 @@ function drawCompletionRing(completion) {
             return t => arc({ startAngle: 0, endAngle: interpolate(t) });
         });
 
-    // Percentage text
     svg.append('text')
         .attr('text-anchor', 'middle')
         .attr('dy', '-0.1em')
         .style('font-size', '2.2rem')
         .style('font-weight', '800')
-        .style('fill', '#f1f5f9')
+        .style('fill', 'var(--text-primary)')
         .text('0%')
         .transition()
         .duration(1500)
@@ -146,7 +205,7 @@ function drawCompletionRing(completion) {
         .attr('text-anchor', 'middle')
         .attr('dy', '2em')
         .style('font-size', '0.8rem')
-        .style('fill', '#64748b')
+        .style('fill', 'var(--text-muted)')
         .text(`${completion.completed} of ${completion.total} tasks`);
 }
 
@@ -182,7 +241,7 @@ function drawDonut(selector, data, type) {
     arcs.append('path')
         .attr('d', arc)
         .attr('fill', d => colors[type][d.data[type]] || '#10b981')
-        .attr('stroke', '#1a2332')
+        .attr('stroke', 'var(--bg-card)')
         .attr('stroke-width', 2)
         .style('opacity', 0)
         .style('cursor', 'pointer')
@@ -201,7 +260,6 @@ function drawDonut(selector, data, type) {
             return t => arc(interpolate(t));
         });
 
-    // Legend
     const legend = container.append('div')
         .style('display', 'flex')
         .style('flex-wrap', 'wrap')
@@ -213,7 +271,7 @@ function drawDonut(selector, data, type) {
         const key = d[type];
         legend.append('span')
             .style('font-size', '0.75rem')
-            .style('color', '#94a3b8')
+            .style('color', 'var(--text-secondary)')
             .style('display', 'inline-flex')
             .style('align-items', 'center')
             .style('gap', '5px')
@@ -251,33 +309,29 @@ function drawBarChart(selector, data, type) {
         .nice()
         .range([height, 0]);
 
-    // Grid lines
     svg.append('g')
         .call(d3.axisLeft(y).ticks(4).tickSize(-width).tickFormat(''))
         .selectAll('line')
-        .attr('stroke', '#1f2b3d')
+        .attr('stroke', 'var(--border-color)')
         .attr('stroke-dasharray', '3,3');
     svg.selectAll('.domain').remove();
 
-    // X axis
     svg.append('g')
         .attr('transform', `translate(0, ${height})`)
         .call(d3.axisBottom(x).tickFormat(d => labels[type][d] || d))
         .selectAll('text')
         .style('font-size', '0.75rem')
-        .style('fill', '#64748b');
+        .style('fill', 'var(--text-muted)');
 
-    // Y axis
     svg.append('g')
         .call(d3.axisLeft(y).ticks(4))
         .selectAll('text')
         .style('font-size', '0.75rem')
-        .style('fill', '#64748b');
+        .style('fill', 'var(--text-muted)');
 
-    svg.selectAll('.domain').attr('stroke', '#2a3a4e');
-    svg.selectAll('.tick line').attr('stroke', '#2a3a4e');
+    svg.selectAll('.domain').attr('stroke', 'var(--border-color)');
+    svg.selectAll('.tick line').attr('stroke', 'var(--border-color)');
 
-    // Bars with hover
     svg.selectAll('.bar')
         .data(data)
         .enter().append('rect')
@@ -301,7 +355,6 @@ function drawBarChart(selector, data, type) {
         .attr('y', d => y(d.count))
         .attr('height', d => height - y(d.count));
 
-    // Value labels
     svg.selectAll('.label')
         .data(data)
         .enter().append('text')
@@ -310,7 +363,7 @@ function drawBarChart(selector, data, type) {
         .attr('text-anchor', 'middle')
         .style('font-size', '0.8rem')
         .style('font-weight', '700')
-        .style('fill', '#f1f5f9')
+        .style('fill', 'var(--text-primary)')
         .style('opacity', 0)
         .text(d => d.count)
         .transition()
@@ -351,33 +404,29 @@ function drawTimeline(selector, data) {
         .nice()
         .range([height, 0]);
 
-    // Grid
     svg.append('g')
         .call(d3.axisLeft(y).ticks(4).tickSize(-width).tickFormat(''))
         .selectAll('line')
-        .attr('stroke', '#1f2b3d')
+        .attr('stroke', 'var(--border-color)')
         .attr('stroke-dasharray', '3,3');
     svg.selectAll('.domain').remove();
 
-    // X axis
     svg.append('g')
         .attr('transform', `translate(0, ${height})`)
         .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat('%b %d')))
         .selectAll('text')
         .style('font-size', '0.75rem')
-        .style('fill', '#64748b');
+        .style('fill', 'var(--text-muted)');
 
-    // Y axis
     svg.append('g')
         .call(d3.axisLeft(y).ticks(4))
         .selectAll('text')
         .style('font-size', '0.75rem')
-        .style('fill', '#64748b');
+        .style('fill', 'var(--text-muted)');
 
-    svg.selectAll('.domain').attr('stroke', '#2a3a4e');
-    svg.selectAll('.tick line').attr('stroke', '#2a3a4e');
+    svg.selectAll('.domain').attr('stroke', 'var(--border-color)');
+    svg.selectAll('.tick line').attr('stroke', 'var(--border-color)');
 
-    // Gradient fill
     const defs = svg.append('defs');
     const areaGrad = defs.append('linearGradient')
         .attr('id', 'timelineGrad')
@@ -386,14 +435,12 @@ function drawTimeline(selector, data) {
     areaGrad.append('stop').attr('offset', '0%').attr('stop-color', '#10b981').attr('stop-opacity', 0.3);
     areaGrad.append('stop').attr('offset', '100%').attr('stop-color', '#10b981').attr('stop-opacity', 0.01);
 
-    // Glow filter
     const glowFilter = defs.append('filter').attr('id', 'lineGlow');
     glowFilter.append('feGaussianBlur').attr('stdDeviation', '2').attr('result', 'blur');
     const merge = glowFilter.append('feMerge');
     merge.append('feMergeNode').attr('in', 'blur');
     merge.append('feMergeNode').attr('in', 'SourceGraphic');
 
-    // Area
     const area = d3.area()
         .x(d => x(d.dateObj))
         .y0(height)
@@ -407,7 +454,6 @@ function drawTimeline(selector, data) {
         .style('opacity', 0)
         .transition().duration(1200).style('opacity', 1);
 
-    // Line
     const line = d3.line()
         .x(d => x(d.dateObj))
         .y(d => y(d.count))
@@ -429,7 +475,6 @@ function drawTimeline(selector, data) {
         .ease(d3.easeCubicOut)
         .attr('stroke-dashoffset', 0);
 
-    // Dots
     svg.selectAll('.dot')
         .data(data)
         .enter().append('circle')
@@ -437,7 +482,7 @@ function drawTimeline(selector, data) {
         .attr('cy', d => y(d.count))
         .attr('r', 0)
         .attr('fill', '#10b981')
-        .attr('stroke', '#1a2332')
+        .attr('stroke', 'var(--bg-card)')
         .attr('stroke-width', 3)
         .style('cursor', 'pointer')
         .on('mouseenter', function() {

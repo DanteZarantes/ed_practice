@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
-from .models import Task, Profile
+from .models import Task, Profile, SubTask
 
 
 class TaskForm(forms.ModelForm):
@@ -30,6 +30,18 @@ class TaskForm(forms.ModelForm):
             'due_date': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date',
+            }),
+        }
+
+
+class SubTaskForm(forms.ModelForm):
+    class Meta:
+        model = SubTask
+        fields = ['title']
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Add a subtask...',
             }),
         }
 

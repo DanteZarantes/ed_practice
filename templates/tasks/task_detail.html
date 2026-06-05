@@ -15,7 +15,9 @@
                         <span class="badge-status badge-{{ task.status }}">{{ task.get_status_display }}</span>
                         <span class="badge-category">{{ task.get_category_display }}</span>
                         {% if task.is_overdue %}
-                        <span class="badge-priority badge-high">Overdue</span>
+                        <span class="badge-priority badge-high"><i class="bi bi-exclamation-triangle me-1"></i>Overdue</span>
+                        {% elif task.is_due_soon %}
+                        <span class="badge-due-soon"><i class="bi bi-alarm me-1"></i>Due Soon</span>
                         {% endif %}
                     </div>
                 </div>
@@ -56,10 +58,57 @@
                 </div>
                 <div class="col-6 col-md-3">
                     <div class="detail-label">Due Date</div>
-                    <div class="detail-value {% if task.is_overdue %}{% endif %}" {% if task.is_overdue %}style="color: var(--accent-red);"{% endif %}>
+                    <div class="detail-value {% if task.is_overdue %}{% endif %}" {% if task.is_overdue %}style="color: var(--accent-red);"{% elif task.is_due_soon %}style="color: var(--accent-amber);"{% endif %}>
                         {% if task.due_date %}{{ task.due_date|date:"M d, Y" }}{% else %}<span style="color: var(--text-muted);">Not set</span>{% endif %}
                     </div>
                 </div>
+            </div>
+
+            <!-- Subtasks Section -->
+            <div class="mb-4 p-3" style="background: var(--bg-input); border-radius: 12px; border: 1px solid var(--border-color);">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="detail-label mb-0">
+                        <i class="bi bi-list-check me-1"></i>Subtasks
+                        {% if subtasks %}
+                        <span style="color: var(--green-primary);">({{ task.subtask_progress.0 }}/{{ task.subtask_progress.1 }})</span>
+                        {% endif %}
+                    </div>
+                    {% if subtasks %}
+                    <span style="color: var(--green-primary); font-size: 0.8rem; font-weight: 600;">{{ task.subtask_percentage }}%</span>
+                    {% endif %}
+                </div>
+
+                {% if subtasks %}
+                <div class="subtask-progress mb-3">
+                    <div class="subtask-progress-bar" id="progressBar" style="width: {{ task.subtask_percentage }}%;"></div>
+                </div>
+                {% endif %}
+
+                <!-- Subtask List -->
+                <div id="subtaskList">
+                    {% for subtask in subtasks %}
+                    <div class="d-flex align-items-center gap-2 py-2 border-bottom" id="subtask-{{ subtask.pk }}" style="border-color: var(--border-color) !important;">
+                        <input type="checkbox" class="task-checkbox" {% if subtask.is_completed %}checked{% endif %} onchange="toggleSubtask({{ subtask.pk }})">
+                        <span class="flex-grow-1 {% if subtask.is_completed %}{% endif %}" style="color: var(--text-secondary); font-size: 0.9rem; {% if subtask.is_completed %}text-decoration: line-through; opacity: 0.6;{% endif %}" id="subtask-title-{{ subtask.pk }}">
+                            {{ subtask.title }}
+                        </span>
+                        <button class="btn btn-sm" style="color: var(--accent-red); opacity: 0.6;" onclick="deleteSubtask({{ subtask.pk }})" title="Remove subtask">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Add Subtask Form -->
+                <form method="post" class="mt-3">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        {{ subtask_form.title }}
+                        <button type="submit" class="btn btn-submit" style="border-radius: 0 12px 12px 0; padding: 0.5rem 1rem;">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                </form>
             </div>
 
             <!-- Timestamps -->
@@ -95,4 +144,56 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function getCSRF() {
+        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+
+    function toggleSubtask(subtaskId) {
+        fetch(`/api/subtask/${subtaskId}/toggle/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRF() },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const title = document.getElementById(`subtask-title-${subtaskId}`);
+                if (data.is_completed) {
+                    title.style.textDecoration = 'line-through';
+                    title.style.opacity = '0.6';
+                } else {
+                    title.style.textDecoration = 'none';
+                    title.style.opacity = '1';
+                }
+                // Update progress bar
+                const bar = document.getElementById('progressBar');
+                if (bar) {
+                    bar.style.width = `${data.progress}%`;
+                }
+            }
+        });
+    }
+
+    function deleteSubtask(subtaskId) {
+        fetch(`/api/subtask/${subtaskId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRF() },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const el = document.getElementById(`subtask-${subtaskId}`);
+                if (el) el.remove();
+                const bar = document.getElementById('progressBar');
+                if (bar) {
+                    bar.style.width = `${data.progress}%`;
+                }
+                showToast('Subtask removed');
+            }
+        });
+    }
+</script>
 {% endblock %}

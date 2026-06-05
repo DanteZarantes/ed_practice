@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,8 +10,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- SortableJS for drag and drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
-        :root {
+        :root, [data-theme="dark"] {
             --bg-primary: #0a0f1a;
             --bg-secondary: #111827;
             --bg-card: #1a2332;
@@ -39,9 +41,27 @@
             --transition-fast: all 0.15s ease;
         }
 
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f1f5f9;
+            --bg-input: #f8fafc;
+            --border-color: #e2e8f0;
+            --border-hover: #10b981;
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+            --card-hover-shadow: 0 12px 40px rgba(16, 185, 129, 0.1);
+            --glow-shadow: 0 0 30px rgba(16, 185, 129, 0.1);
+            --green-glow: rgba(16, 185, 129, 0.2);
+            --green-subtle: rgba(16, 185, 129, 0.06);
+        }
+
         * {
             scrollbar-width: thin;
-            scrollbar-color: #2a3a4e #111827;
+            scrollbar-color: var(--border-color) var(--bg-secondary);
         }
 
         body {
@@ -50,9 +70,9 @@
             color: var(--text-primary);
             min-height: 100vh;
             overflow-x: hidden;
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
-        /* Subtle grid background */
         body::before {
             content: '';
             position: fixed;
@@ -67,14 +87,19 @@
             z-index: 0;
         }
 
+        [data-theme="light"] body::before {
+            background-image: none;
+        }
+
         /* ─── Navbar ─── */
         .navbar {
             background: var(--bg-secondary) !important;
             border-bottom: 1px solid var(--border-color);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             padding: 0.8rem 0;
-            position: relative;
-            z-index: 100;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
         }
 
         .navbar::after {
@@ -184,6 +209,27 @@
             box-shadow: 0 0 12px var(--green-glow);
         }
 
+        /* Theme Toggle */
+        .theme-toggle {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--green-primary);
+            color: var(--green-primary);
+            background: var(--green-subtle);
+        }
+
         /* ─── Main Content ─── */
         .main-content {
             padding: 2rem 0;
@@ -233,6 +279,8 @@
         .stat-card.in-progress::after { background: var(--accent-blue); }
         .stat-card.done::before { background: var(--green-light); }
         .stat-card.done::after { background: var(--green-light); }
+        .stat-card.overdue::before { background: var(--accent-red); }
+        .stat-card.overdue::after { background: var(--accent-red); }
 
         .stat-card:hover {
             transform: translateY(-4px);
@@ -270,6 +318,7 @@
         .stat-card.pending .stat-icon { background: rgba(245, 158, 11, 0.1); color: var(--accent-amber); }
         .stat-card.in-progress .stat-icon { background: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
         .stat-card.done .stat-icon { background: rgba(52, 211, 153, 0.1); color: var(--green-light); }
+        .stat-card.overdue .stat-icon { background: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
 
         /* ─── Filter Section ─── */
         .filter-section {
@@ -353,6 +402,24 @@
             color: var(--text-muted);
         }
 
+        .task-card.selected {
+            border-color: var(--green-primary) !important;
+            box-shadow: 0 0 0 2px var(--green-glow);
+        }
+
+        .task-card.due-soon {
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { box-shadow: var(--card-shadow); }
+            50% { box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3); }
+        }
+
+        .task-card.overdue-card {
+            border-left-color: var(--accent-red) !important;
+        }
+
         .task-title {
             font-weight: 600;
             font-size: 1.05rem;
@@ -364,6 +431,22 @@
             color: var(--text-secondary);
             font-size: 0.85rem;
             margin-bottom: 0.75rem;
+        }
+
+        /* ─── Progress Bar ─── */
+        .subtask-progress {
+            height: 4px;
+            border-radius: 2px;
+            background: var(--border-color);
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+
+        .subtask-progress-bar {
+            height: 100%;
+            background: var(--green-gradient);
+            border-radius: 2px;
+            transition: width 0.4s ease;
         }
 
         /* ─── Badges ─── */
@@ -398,6 +481,21 @@
             font-weight: 500;
             background: rgba(139, 92, 246, 0.12);
             color: #a78bfa;
+        }
+
+        .badge-due-soon {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            padding: 0.3rem 0.7rem;
+            border-radius: 50px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
         }
 
         /* ─── Action Buttons ─── */
@@ -517,6 +615,79 @@
             border-color: var(--green-primary);
         }
 
+        /* ─── Bulk Actions Bar ─── */
+        .bulk-actions-bar {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--bg-card);
+            border: 1px solid var(--green-primary);
+            border-radius: 16px;
+            padding: 0.75rem 1.5rem;
+            box-shadow: 0 8px 30px rgba(16, 185, 129, 0.2);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: transform 0.3s ease;
+        }
+
+        .bulk-actions-bar.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ─── Kanban ─── */
+        .kanban-column {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.25rem;
+            border: 1px solid var(--border-color);
+            min-height: 400px;
+        }
+
+        .kanban-column-header {
+            font-weight: 700;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .kanban-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            cursor: grab;
+            transition: var(--transition);
+        }
+
+        .kanban-card:hover {
+            border-color: var(--green-primary);
+            box-shadow: var(--card-hover-shadow);
+        }
+
+        .kanban-card:active {
+            cursor: grabbing;
+        }
+
+        .kanban-card.sortable-ghost {
+            opacity: 0.4;
+            background: var(--green-subtle);
+            border: 2px dashed var(--green-primary);
+        }
+
+        .kanban-card.sortable-drag {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+
         /* ─── Empty State ─── */
         .empty-state {
             text-align: center;
@@ -552,6 +723,43 @@
             border-color: var(--green-primary);
         }
 
+        /* ─── Activity Feed ─── */
+        .activity-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        /* ─── Keyboard Shortcut Hints ─── */
+        .kbd-hint {
+            display: inline-block;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            font-size: 0.65rem;
+            font-family: monospace;
+            color: var(--text-muted);
+            margin-left: 0.5rem;
+        }
+
         /* ─── Misc ─── */
         .due-date {
             font-size: 0.8rem;
@@ -560,6 +768,11 @@
 
         .due-date.overdue {
             color: var(--accent-red);
+            font-weight: 600;
+        }
+
+        .due-date.due-soon-text {
+            color: var(--accent-amber);
             font-weight: 600;
         }
 
@@ -640,6 +853,38 @@
             border-color: var(--border-color) !important;
         }
 
+        /* ─── Checkbox ─── */
+        .task-checkbox {
+            width: 20px;
+            height: 20px;
+            appearance: none;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .task-checkbox:checked {
+            background: var(--green-primary);
+            border-color: var(--green-primary);
+        }
+
+        .task-checkbox:checked::after {
+            content: '\2713';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .task-checkbox:hover {
+            border-color: var(--green-primary);
+        }
+
         /* ─── Pulse Animation ─── */
         @keyframes pulse-glow {
             0%, 100% { box-shadow: 0 0 0 0 var(--green-glow); }
@@ -660,7 +905,6 @@
             color: var(--green-light);
         }
 
-        /* ─── Border top helper ─── */
         .border-top {
             border-color: var(--border-color) !important;
         }
@@ -680,6 +924,10 @@
             filter: invert(1);
         }
 
+        [data-theme="light"] .btn-close {
+            filter: none;
+        }
+
         /* Interactive hover glow for cards */
         .task-card::before {
             content: '';
@@ -696,6 +944,76 @@
         }
 
         .task-card:hover::before {
+            opacity: 1;
+        }
+
+        /* ─── Keyboard Shortcuts Modal ─── */
+        .shortcuts-modal .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+        }
+
+        .shortcuts-modal .modal-header {
+            border-bottom-color: var(--border-color);
+        }
+
+        .shortcuts-modal .modal-body {
+            color: var(--text-secondary);
+        }
+
+        .shortcut-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .shortcut-row:last-child {
+            border-bottom: none;
+        }
+
+        .shortcut-key {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: var(--green-primary);
+        }
+
+        /* ─── View Toggle ─── */
+        .view-toggle .btn {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+        }
+
+        .view-toggle .btn.active {
+            background: var(--green-subtle);
+            border-color: var(--green-primary);
+            color: var(--green-primary);
+        }
+
+        .view-toggle .btn:hover {
+            border-color: var(--green-primary);
+            color: var(--green-primary);
+        }
+
+        /* Drag handle */
+        .drag-handle {
+            cursor: grab;
+            color: var(--text-muted);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .task-card:hover .drag-handle {
             opacity: 1;
         }
     </style>
@@ -722,6 +1040,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link nav-link-custom {% if request.resolver_match.url_name == 'kanban' %}active{% endif %}" href="{% url 'kanban' %}">
+                            <i class="bi bi-kanban me-1"></i>Kanban
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link nav-link-custom {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
                             <i class="bi bi-bar-chart me-1"></i>Dashboard
                         </a>
@@ -729,9 +1052,12 @@
                 </ul>
 
                 <div class="d-flex align-items-center gap-2">
-                    <a href="{% url 'task_create' %}" class="btn btn-create">
+                    <a href="{% url 'task_create' %}" class="btn btn-create" title="New Task (N)">
                         <i class="bi bi-plus-lg me-1"></i>New Task
                     </a>
+                    <button class="theme-toggle" id="themeToggle" title="Toggle theme (T)" aria-label="Toggle theme">
+                        <i class="bi bi-moon-stars" id="themeIcon"></i>
+                    </button>
                     <div class="dropdown">
                         <a href="#" class="avatar-sm dropdown-toggle text-decoration-none" data-bs-toggle="dropdown" aria-expanded="false" style="background: {{ user.profile.avatar_color|default:'#10b981' }};">
                             {{ user.profile.initials }}
@@ -743,6 +1069,7 @@
                             </li>
                             <li><a class="dropdown-item py-2" href="{% url 'profile' %}"><i class="bi bi-person me-2"></i>Profile</a></li>
                             <li><a class="dropdown-item py-2" href="{% url 'dashboard' %}"><i class="bi bi-bar-chart me-2"></i>Dashboard</a></li>
+                            <li><a class="dropdown-item py-2" href="#" data-bs-toggle="modal" data-bs-target="#shortcutsModal"><i class="bi bi-keyboard me-2"></i>Shortcuts <span class="kbd-hint">?</span></a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item py-2" style="color: var(--accent-red) !important;" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
                         </ul>
@@ -781,17 +1108,95 @@
         </div>
     </main>
 
+    <!-- Keyboard Shortcuts Modal -->
+    {% if user.is_authenticated %}
+    <div class="modal fade shortcuts-modal" id="shortcutsModal" tabindex="-1" aria-labelledby="shortcutsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title" id="shortcutsModalLabel" style="color: var(--text-primary);">
+                        <i class="bi bi-keyboard me-2" style="color: var(--green-primary);"></i>Keyboard Shortcuts
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="shortcut-row">
+                        <span>New Task</span>
+                        <span class="shortcut-key">N</span>
+                    </div>
+                    <div class="shortcut-row">
+                        <span>Search Tasks</span>
+                        <span class="shortcut-key">/</span>
+                    </div>
+                    <div class="shortcut-row">
+                        <span>Toggle Theme</span>
+                        <span class="shortcut-key">T</span>
+                    </div>
+                    <div class="shortcut-row">
+                        <span>Go to Tasks</span>
+                        <span class="shortcut-key">G then L</span>
+                    </div>
+                    <div class="shortcut-row">
+                        <span>Go to Kanban</span>
+                        <span class="shortcut-key">G then K</span>
+                    </div>
+                    <div class="shortcut-row">
+                        <span>Go to Dashboard</span>
+                        <span class="shortcut-key">G then D</span>
+                    </div>
+                    <div class="shortcut-row">
+                        <span>Show Shortcuts</span>
+                        <span class="shortcut-key">?</span>
+                    </div>
+                    <div class="shortcut-row">
+                        <span>Select All Tasks</span>
+                        <span class="shortcut-key">Ctrl+A</span>
+                    </div>
+                    <div class="shortcut-row">
+                        <span>Escape / Deselect</span>
+                        <span class="shortcut-key">Esc</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Auto-dismiss alerts
+        // ─── Theme Toggle ───
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const html = document.documentElement;
+
+        function setTheme(theme) {
+            html.setAttribute('data-theme', theme);
+            localStorage.setItem('taskflow-theme', theme);
+            if (themeIcon) {
+                themeIcon.className = theme === 'dark' ? 'bi bi-moon-stars' : 'bi bi-sun';
+            }
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('taskflow-theme') || 'dark';
+        setTheme(savedTheme);
+
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const current = html.getAttribute('data-theme');
+                setTheme(current === 'dark' ? 'light' : 'dark');
+            });
+        }
+
+        // ─── Auto-dismiss alerts ───
         setTimeout(() => {
-            document.querySelectorAll('.alert').forEach(alert => {
+            document.querySelectorAll('.toast-container .alert').forEach(alert => {
                 new bootstrap.Alert(alert).close();
             });
         }, 4000);
 
-        // Interactive mouse glow on task cards
+        // ─── Interactive mouse glow on task cards ───
         document.addEventListener('mousemove', (e) => {
             document.querySelectorAll('.task-card').forEach(card => {
                 const rect = card.getBoundingClientRect();
@@ -801,6 +1206,116 @@
                 card.style.setProperty('--mouse-y', y + 'px');
             });
         });
+
+        // ─── Keyboard Shortcuts ───
+        let gPressed = false;
+        document.addEventListener('keydown', (e) => {
+            // Don't trigger if user is typing in an input/textarea
+            const tag = e.target.tagName.toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+            const key = e.key.toLowerCase();
+
+            // ? - show shortcuts
+            if (e.key === '?') {
+                e.preventDefault();
+                const modal = new bootstrap.Modal(document.getElementById('shortcutsModal'));
+                modal.show();
+                return;
+            }
+
+            // N - new task
+            if (key === 'n' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                window.location.href = "{% url 'task_create' %}";
+                return;
+            }
+
+            // T - toggle theme
+            if (key === 't' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                const current = html.getAttribute('data-theme');
+                setTheme(current === 'dark' ? 'light' : 'dark');
+                return;
+            }
+
+            // / - focus search
+            if (e.key === '/') {
+                const searchInput = document.querySelector('.search-input');
+                if (searchInput) {
+                    e.preventDefault();
+                    searchInput.focus();
+                }
+                return;
+            }
+
+            // Escape - deselect all
+            if (key === 'escape') {
+                document.querySelectorAll('.task-card.selected').forEach(card => {
+                    card.classList.remove('selected');
+                    const cb = card.querySelector('.task-checkbox');
+                    if (cb) cb.checked = false;
+                });
+                updateBulkBar();
+                return;
+            }
+
+            // G-based navigation
+            if (key === 'g' && !gPressed) {
+                gPressed = true;
+                setTimeout(() => { gPressed = false; }, 1000);
+                return;
+            }
+
+            if (gPressed) {
+                gPressed = false;
+                if (key === 'l') { window.location.href = "{% url 'task_list' %}"; }
+                else if (key === 'k') { window.location.href = "{% url 'kanban' %}"; }
+                else if (key === 'd') { window.location.href = "{% url 'dashboard' %}"; }
+            }
+        });
+
+        // ─── CSRF Token helper ───
+        function getCSRFToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                   document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='))?.split('=')[1] || '';
+        }
+
+        // ─── Bulk Actions ───
+        function updateBulkBar() {
+            const selected = document.querySelectorAll('.task-card.selected');
+            const bar = document.getElementById('bulkActionsBar');
+            if (bar) {
+                const count = selected.length;
+                if (count > 0) {
+                    bar.classList.add('visible');
+                    document.getElementById('selectedCount').textContent = count;
+                } else {
+                    bar.classList.remove('visible');
+                }
+            }
+        }
+
+        // ─── Show toast notification ───
+        function showToast(message, type = 'success') {
+            const container = document.querySelector('.toast-container') || (() => {
+                const div = document.createElement('div');
+                div.className = 'toast-container';
+                document.body.appendChild(div);
+                return div;
+            })();
+
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show animate-in`;
+            alert.innerHTML = `
+                <i class="bi bi-check-circle-fill me-2" style="color: var(--green-primary);"></i>${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            container.appendChild(alert);
+            setTimeout(() => {
+                if (alert.parentNode) new bootstrap.Alert(alert).close();
+            }, 3000);
+        }
     </script>
     {% block extra_js %}{% endblock %}
 </body>
