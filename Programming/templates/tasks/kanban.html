@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+
+{% block title %}Kanban Board - TaskFlow{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 animate-in">
+    <h2 class="fw-bold" style="color: var(--text-primary);">
+        <i class="bi bi-kanban me-2" style="color: var(--green-primary);"></i>Kanban Board
+    </h2>
+    <div class="d-flex gap-2">
+        <a href="{% url 'task_create' %}" class="btn btn-create">
+            <i class="bi bi-plus-lg me-1"></i>New Task
+        </a>
+        <a href="{% url 'task_list' %}" class="btn btn-cancel">
+            <i class="bi bi-list-task me-1"></i>List View
+        </a>
+    </div>
+</div>
+
+<form id="kanbanForm">{% csrf_token %}</form>
+
+<div class="row g-4">
+    <!-- To Do Column -->
+    <div class="col-md-4">
+        <div class="kanban-column animate-in" style="animation-delay: 0.1s;">
+            <div class="kanban-column-header">
+                <span style="color: #94a3b8;"><i class="bi bi-circle me-2"></i>To Do</span>
+                <span class="badge rounded-pill" style="background: rgba(100, 116, 139, 0.2); color: #94a3b8;">{{ todo_tasks.count }}</span>
+            </div>
+            <div class="kanban-items" id="kanban-todo" data-status="todo">
+                {% for task in todo_tasks %}
+                <div class="kanban-card" data-task-id="{{ task.pk }}">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="mb-0 fw-semibold" style="color: var(--text-primary); font-size: 0.9rem;">{{ task.title }}</h6>
+                        <span class="badge-priority badge-{{ task.priority }}" style="font-size: 0.6rem;">{{ task.get_priority_display }}</span>
+                    </div>
+                    {% if task.description %}
+                    <p class="mb-2" style="color: var(--text-muted); font-size: 0.8rem;">{{ task.description|truncatewords:12 }}</p>
+                    {% endif %}
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge-category" style="font-size: 0.6rem;">{{ task.get_category_display }}</span>
+                        {% if task.due_date %}
+                        <span class="due-date {% if task.is_overdue %}overdue{% elif task.is_due_soon %}due-soon-text{% endif %}">
+                            <i class="bi bi-calendar3 me-1"></i>{{ task.due_date|date:"M d" }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if task.subtask_progress.1 > 0 %}
+                    <div class="subtask-progress mt-2">
+                        <div class="subtask-progress-bar" style="width: {{ task.subtask_percentage }}%;"></div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <div class="text-center py-4" style="color: var(--text-muted);">
+                    <i class="bi bi-inbox" style="font-size: 1.5rem;"></i>
+                    <p class="small mt-2 mb-0">No tasks here</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- In Progress Column -->
+    <div class="col-md-4">
+        <div class="kanban-column animate-in" style="animation-delay: 0.2s;">
+            <div class="kanban-column-header">
+                <span style="color: #60a5fa;"><i class="bi bi-arrow-repeat me-2"></i>In Progress</span>
+                <span class="badge rounded-pill" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa;">{{ in_progress_tasks.count }}</span>
+            </div>
+            <div class="kanban-items" id="kanban-in_progress" data-status="in_progress">
+                {% for task in in_progress_tasks %}
+                <div class="kanban-card" data-task-id="{{ task.pk }}">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="mb-0 fw-semibold" style="color: var(--text-primary); font-size: 0.9rem;">{{ task.title }}</h6>
+                        <span class="badge-priority badge-{{ task.priority }}" style="font-size: 0.6rem;">{{ task.get_priority_display }}</span>
+                    </div>
+                    {% if task.description %}
+                    <p class="mb-2" style="color: var(--text-muted); font-size: 0.8rem;">{{ task.description|truncatewords:12 }}</p>
+                    {% endif %}
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge-category" style="font-size: 0.6rem;">{{ task.get_category_display }}</span>
+                        {% if task.due_date %}
+                        <span class="due-date {% if task.is_overdue %}overdue{% elif task.is_due_soon %}due-soon-text{% endif %}">
+                            <i class="bi bi-calendar3 me-1"></i>{{ task.due_date|date:"M d" }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if task.subtask_progress.1 > 0 %}
+                    <div class="subtask-progress mt-2">
+                        <div class="subtask-progress-bar" style="width: {{ task.subtask_percentage }}%;"></div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <div class="text-center py-4" style="color: var(--text-muted);">
+                    <i class="bi bi-inbox" style="font-size: 1.5rem;"></i>
+                    <p class="small mt-2 mb-0">No tasks here</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Done Column -->
+    <div class="col-md-4">
+        <div class="kanban-column animate-in" style="animation-delay: 0.3s;">
+            <div class="kanban-column-header">
+                <span style="color: var(--green-light);"><i class="bi bi-check-circle me-2"></i>Done</span>
+                <span class="badge rounded-pill" style="background: rgba(16, 185, 129, 0.2); color: var(--green-light);">{{ done_tasks.count }}</span>
+            </div>
+            <div class="kanban-items" id="kanban-done" data-status="done">
+                {% for task in done_tasks %}
+                <div class="kanban-card" data-task-id="{{ task.pk }}" style="opacity: 0.7;">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="mb-0 fw-semibold" style="color: var(--text-muted); font-size: 0.9rem; text-decoration: line-through;">{{ task.title }}</h6>
+                        <span class="badge-priority badge-{{ task.priority }}" style="font-size: 0.6rem;">{{ task.get_priority_display }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge-category" style="font-size: 0.6rem;">{{ task.get_category_display }}</span>
+                        <span class="due-date"><i class="bi bi-check-lg me-1" style="color: var(--green-primary);"></i>Done</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-4" style="color: var(--text-muted);">
+                    <i class="bi bi-inbox" style="font-size: 1.5rem;"></i>
+                    <p class="small mt-2 mb-0">No tasks here</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ─── Kanban Drag & Drop ───
+    function getCSRF() {
+        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+
+    const columns = ['todo', 'in_progress', 'done'];
+    columns.forEach(status => {
+        const el = document.getElementById(`kanban-${status}`);
+        if (el && typeof Sortable !== 'undefined') {
+            new Sortable(el, {
+                group: 'kanban',
+                animation: 250,
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag',
+                onEnd: function(evt) {
+                    const taskId = evt.item.dataset.taskId;
+                    const newStatus = evt.to.dataset.status;
+
+                    // Update card appearance
+                    if (newStatus === 'done') {
+                        evt.item.style.opacity = '0.7';
+                        const title = evt.item.querySelector('h6');
+                        if (title) {
+                            title.style.textDecoration = 'line-through';
+                            title.style.color = 'var(--text-muted)';
+                        }
+                    } else {
+                        evt.item.style.opacity = '1';
+                        const title = evt.item.querySelector('h6');
+                        if (title) {
+                            title.style.textDecoration = 'none';
+                            title.style.color = 'var(--text-primary)';
+                        }
+                    }
+
+                    // Update column counts
+                    columns.forEach(col => {
+                        const colEl = document.getElementById(`kanban-${col}`);
+                        const count = colEl.querySelectorAll('.kanban-card').length;
+                        const badge = colEl.closest('.kanban-column').querySelector('.badge');
+                        if (badge) badge.textContent = count;
+                    });
+
+                    // Send update to server
+                    fetch(`/api/task/${taskId}/status/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRF(),
+                        },
+                        body: JSON.stringify({ status: newStatus }),
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast(`Task moved to ${newStatus.replace('_', ' ')}`);
+                        }
+                    });
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
