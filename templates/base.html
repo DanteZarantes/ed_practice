@@ -1059,7 +1059,7 @@
                         <i class="bi bi-moon-stars" id="themeIcon"></i>
                     </button>
                     <div class="dropdown">
-                        <a href="#" class="avatar-sm dropdown-toggle text-decoration-none" data-bs-toggle="dropdown" aria-expanded="false" style="background: {{ user.profile.avatar_color|default:'#10b981' }};">
+                        <a href="#" class="avatar-sm dropdown-toggle text-decoration-none" data-bs-toggle="dropdown" aria-expanded="false" data-avatar-color="{{ user.profile.avatar_color|default:'#10b981' }}">
                             {{ user.profile.initials }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
@@ -1316,6 +1316,10 @@
                 if (alert.parentNode) new bootstrap.Alert(alert).close();
             }, 3000);
         }
+
+        document.querySelectorAll('.avatar-sm[data-avatar-color]').forEach(avatar => {
+            avatar.style.background = avatar.dataset.avatarColor || '#10b981';
+        });
     </script>
     {% block extra_js %}{% endblock %}
 </body>
