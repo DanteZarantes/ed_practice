@@ -76,5 +76,33 @@
             </div>
         </div>
     </div>
+
+    <!-- Recent Activity -->
+    {% if recent_activity %}
+    <div class="col-md-8 col-lg-7 mt-4">
+        <div class="detail-card animate-in" style="animation-delay: 0.2s;">
+            <h5 class="fw-bold mb-3" style="color: var(--text-primary);">
+                <i class="bi bi-activity me-2" style="color: var(--green-primary);"></i>Recent Activity
+            </h5>
+            <div class="activity-feed">
+                {% for activity in recent_activity %}
+                <div class="activity-item">
+                    <div class="activity-icon" style="background: {{ activity.color }}20; color: {{ activity.color }};">
+                        <i class="bi {{ activity.icon }}"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div style="color: var(--text-primary); font-size: 0.85rem;">
+                            <strong>{{ activity.get_action_display }}</strong> "{{ activity.task_title|truncatewords:6 }}"
+                        </div>
+                        <div style="color: var(--text-muted); font-size: 0.75rem;">
+                            {{ activity.timestamp|timesince }} ago
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

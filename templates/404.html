@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Page Not Found - TaskFlow{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center" style="min-height: 60vh; align-items: center;">
+    <div class="col-md-6 col-lg-5 text-center">
+        <div class="animate-in">
+            <div style="font-size: 6rem; font-weight: 800; color: var(--green-primary); line-height: 1; margin-bottom: 1rem;">404</div>
+            <h3 class="fw-bold mb-2" style="color: var(--text-primary);">Page Not Found</h3>
+            <p style="color: var(--text-muted);" class="mb-4">The page you're looking for doesn't exist or has been moved.</p>
+            <div class="d-flex gap-3 justify-content-center">
+                <a href="{% url 'task_list' %}" class="btn btn-submit">
+                    <i class="bi bi-house me-1"></i> Go Home
+                </a>
+                <a href="javascript:history.back()" class="btn btn-cancel">
+                    <i class="bi bi-arrow-left me-1"></i> Go Back
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

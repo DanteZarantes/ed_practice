@@ -4,10 +4,11 @@ from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
-from django.db.models import Q, Count
+from django.core.paginator import Paginator
+from django.db.models import Q, Count, F
 from django.db.models.functions import TruncDate
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from .models import Task, Profile, SubTask, Activity
 from .forms import TaskForm, SignUpForm, ProfileForm, SubTaskForm
 
@@ -52,6 +53,7 @@ def login_view(request):
     return render(request, 'accounts/login.html', {'form': form})
 
 
+@require_http_methods(["GET", "POST"])
 def logout_view(request):
     logout(request)
     messages.success(request, 'You have been logged out.')
@@ -128,9 +130,9 @@ def task_list(request):
     # Sorting
     sort_by = request.GET.get('sort', '')
     if sort_by == 'due_date':
-        tasks = tasks.order_by('due_date')
+        # Put tasks with no due date at the end
+        tasks = tasks.order_by(F('due_date').asc(nulls_last=True))
     elif sort_by == 'priority':
-        # Custom ordering: high > medium > low
         from django.db.models import Case, When, Value, IntegerField
         tasks = tasks.annotate(
             priority_order=Case(
@@ -145,16 +147,27 @@ def task_list(request):
     elif sort_by == 'created':
         tasks = tasks.order_by('-created_at')
 
-    # Statistics for current user
+    # Pagination
+    paginator = Paginator(tasks, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Statistics for current user (use aggregation, not Python loop)
     user_tasks = Task.objects.filter(user=request.user)
     total_tasks = user_tasks.count()
     completed_tasks = user_tasks.filter(status='done').count()
     pending_tasks = user_tasks.filter(status='todo').count()
     in_progress_tasks = user_tasks.filter(status='in_progress').count()
-    overdue_tasks = sum(1 for t in user_tasks if t.is_overdue)
+
+    from django.utils import timezone
+    today = timezone.now().date()
+    overdue_tasks = user_tasks.filter(
+        due_date__lt=today, completed=False
+    ).count()
 
     context = {
-        'tasks': tasks,
+        'tasks': page_obj,
+        'page_obj': page_obj,
         'query': query,
         'status_filter': status_filter,
         'priority_filter': priority_filter,
@@ -238,6 +251,7 @@ def task_delete(request, pk):
 
 
 @login_required
+@require_POST
 def task_toggle(request, pk):
     task = get_object_or_404(Task, pk=pk, user=request.user)
     if task.status == 'done':
@@ -374,21 +388,25 @@ def bulk_action(request):
         tasks = Task.objects.filter(pk__in=task_ids, user=request.user)
 
         if action == 'complete':
+            count = 0
             for task in tasks:
                 task.status = 'done'
                 task.completed = True
                 task.save()
                 log_activity(request.user, task.title, 'completed')
-            return JsonResponse({'success': True, 'message': f'{tasks.count()} tasks completed.'})
+                count += 1
+            return JsonResponse({'success': True, 'message': f'{count} task{"s" if count != 1 else ""} completed.'})
         elif action == 'delete':
-            count = tasks.count()
+            count = 0
             for task in tasks:
                 log_activity(request.user, task.title, 'deleted')
+                count += 1
             tasks.delete()
-            return JsonResponse({'success': True, 'message': f'{count} tasks deleted.'})
+            return JsonResponse({'success': True, 'message': f'{count} task{"s" if count != 1 else ""} deleted.'})
         elif action in dict(Task.STATUS_CHOICES):
+            count = tasks.count()
             tasks.update(status=action, completed=(action == 'done'))
-            return JsonResponse({'success': True, 'message': f'{tasks.count()} tasks updated.'})
+            return JsonResponse({'success': True, 'message': f'{count} task{"s" if count != 1 else ""} updated.'})
         else:
             return JsonResponse({'success': False, 'error': 'Invalid action'}, status=400)
     except (json.JSONDecodeError, KeyError):
