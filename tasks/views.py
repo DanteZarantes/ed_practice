@@ -9,8 +9,8 @@ from django.db.models import Q, Count, F
 from django.db.models.functions import TruncDate
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_http_methods
-from .models import Task, Profile, SubTask, Activity
-from .forms import TaskForm, SignUpForm, ProfileForm, SubTaskForm
+from .models import Task, Profile, SubTask, Activity, TaskAttachment
+from .forms import TaskForm, SignUpForm, ProfileForm, SubTaskForm, AttachmentForm
 
 
 # ─── Helper ──────────────────────────────────────────────────────────────────
@@ -187,21 +187,34 @@ def task_detail(request, pk):
     task = get_object_or_404(Task, pk=pk, user=request.user)
     subtasks = task.subtasks.all()
     subtask_form = SubTaskForm()
+    attachment_form = AttachmentForm()
 
     if request.method == 'POST':
-        subtask_form = SubTaskForm(request.POST)
-        if subtask_form.is_valid():
-            subtask = subtask_form.save(commit=False)
-            subtask.task = task
-            subtask.position = task.subtasks.count()
-            subtask.save()
-            messages.success(request, 'Subtask added!')
-            return redirect('task_detail', pk=task.pk)
+        if 'subtask_submit' in request.POST:
+            subtask_form = SubTaskForm(request.POST)
+            if subtask_form.is_valid():
+                subtask = subtask_form.save(commit=False)
+                subtask.task = task
+                subtask.position = task.subtasks.count()
+                subtask.save()
+                messages.success(request, 'Subtask added!')
+                return redirect('task_detail', pk=task.pk)
+        elif 'attachment_submit' in request.POST:
+            attachment_form = AttachmentForm(request.POST, request.FILES)
+            if attachment_form.is_valid():
+                attachment = attachment_form.save(commit=False)
+                attachment.task = task
+                attachment.filename = request.FILES['file'].name
+                attachment.save()
+                messages.success(request, 'Attachment uploaded!')
+                return redirect('task_detail', pk=task.pk)
 
     context = {
         'task': task,
         'subtasks': subtasks,
         'subtask_form': subtask_form,
+        'attachment_form': attachment_form,
+        'attachments': task.attachments.all(),
     }
     return render(request, 'tasks/task_detail.html', context)
 
@@ -271,6 +284,14 @@ def task_toggle(request, pk):
             'completed': task.completed,
         })
     return redirect('task_list')
+
+
+@login_required
+@require_POST
+def attachment_delete(request, pk):
+    attachment = get_object_or_404(TaskAttachment, pk=pk, task__user=request.user)
+    attachment.delete()
+    return JsonResponse({'success': True})
 
 
 # ─── AJAX / API Views ─────────────────────────────────────────────────────────

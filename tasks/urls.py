@@ -20,6 +20,7 @@ urlpatterns = [
     path('api/tasks/reorder/', views.task_reorder, name='task_reorder'),
     path('api/subtask/<int:pk>/toggle/', views.subtask_toggle, name='subtask_toggle'),
     path('api/subtask/<int:pk>/delete/', views.subtask_delete, name='subtask_delete'),
+    path('api/attachment/<int:pk>/delete/', views.attachment_delete, name='attachment_delete'),
     path('api/tasks/bulk/', views.bulk_action, name='bulk_action'),
 
     # Dashboard

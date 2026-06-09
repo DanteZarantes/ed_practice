@@ -58,8 +58,17 @@
                 </div>
                 <div class="col-6 col-md-3">
                     <div class="detail-label">Due Date</div>
-                    <div class="detail-value {% if task.is_overdue %}{% endif %}" {% if task.is_overdue %}style="color: var(--accent-red);"{% elif task.is_due_soon %}style="color: var(--accent-amber);"{% endif %}>
-                        {% if task.due_date %}{{ task.due_date|date:"M d, Y" }}{% else %}<span style="color: var(--text-muted);">Not set</span>{% endif %}
+                    <div class="detail-value" {% if task.is_overdue %}style="color: var(--accent-red);"{% elif task.is_due_soon %}style="color: var(--accent-amber);"{% endif %}>
+                        {% if task.due_date %}
+                            {{ task.due_date|date:"M d, Y" }}
+                            {% if task.time_remaining %}
+                            <div class="small mt-1" {% if task.is_overdue %}style="color: var(--accent-red);"{% elif task.is_due_soon %}style="color: var(--accent-amber);"{% else %}style="color: var(--text-muted);"{% endif %}>
+                                <i class="bi bi-clock me-1"></i>{{ task.time_remaining }}
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            <span style="color: var(--text-muted);">Not set</span>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -104,12 +113,40 @@
                     {% csrf_token %}
                     <div class="input-group">
                         {{ subtask_form.title }}
-                        <button type="submit" class="btn btn-submit" style="border-radius: 0 12px 12px 0; padding: 0.5rem 1rem;">
+                        <button type="submit" name="subtask_submit" class="btn btn-submit" style="border-radius: 0 12px 12px 0; padding: 0.5rem 1rem;">
                             <i class="bi bi-plus-lg"></i>
                         </button>
                     </div>
                 </form>
             </div>
+
+            <!-- Attachments Section -->
+            <div class="mb-4 p-3" style="background: var(--bg-input); border-radius: 12px; border: 1px solid var(--border-color);">
+                <div class="detail-label mb-3"><i class="bi bi-paperclip me-1"></i>Attachments</div>
+                {% for att in attachments %}
+                <div class="d-flex align-items-center gap-2 py-2 border-bottom" id="att-{{ att.pk }}" style="border-color: var(--border-color) !important;">
+                    <i class="bi bi-file-earmark" style="color: var(--text-muted);"></i>
+                    <a href="{{ att.file.url }}" target="_blank" class="flex-grow-1 text-decoration-none" style="color: var(--text-secondary); font-size: 0.9rem;">{{ att.filename }}</a>
+                    <small style="color: var(--text-muted);">{{ att.uploaded_at|date:"M d, Y" }}</small>
+                    <button class="btn btn-sm" style="color: var(--accent-red); opacity: 0.6;" onclick="deleteAttachment({{ att.pk }})" title="Remove">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                {% empty %}
+                <p class="small mb-2" style="color: var(--text-muted);">No attachments yet.</p>
+                {% endfor %}
+                <form method="post" enctype="multipart/form-data" class="mt-3">
+                    {% csrf_token %}
+                    {% if attachment_form.file.errors %}
+                    <div class="small mb-2" style="color: var(--accent-red);">{{ attachment_form.file.errors.0 }}</div>
+                    {% endif %}
+                    <div class="input-group">
+                        {{ attachment_form.file }}
+                        <button type="submit" name="attachment_submit" class="btn btn-submit" style="border-radius: 0 12px 12px 0; padding: 0.5rem 1rem;">
+                            <i class="bi bi-upload"></i>
+                        </button>
+                    </div>
+                </form>
 
             <!-- Timestamps -->
             <div class="border-top pt-3">
@@ -192,6 +229,19 @@
                     bar.style.width = `${data.progress}%`;
                 }
                 showToast('Subtask removed');
+            }
+        });
+    }
+    function deleteAttachment(attId) {
+        fetch(`/api/attachment/${attId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRF() },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const el = document.getElementById(`att-${attId}`);
+                if (el) el.remove();
             }
         });
     }

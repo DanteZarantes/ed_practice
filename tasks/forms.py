@@ -1,7 +1,34 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
-from .models import Task, Profile, SubTask
+from .models import Task, Profile, SubTask, TaskAttachment
+
+
+class AttachmentForm(forms.ModelForm):
+    class Meta:
+        model = TaskAttachment
+        fields = ['file']
+        widgets = {
+            'file': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+        }
+
+    def clean_file(self):
+        file = self.cleaned_data.get('file')
+        if not file:
+            return file
+        allowed = [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+            'application/pdf', 'text/plain',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]
+        if file.content_type not in allowed:
+            raise forms.ValidationError('Unsupported file type.')
+        if file.size > 100 * 1024 * 1024:
+            raise forms.ValidationError('File size must not exceed 100MB.')
+        return file
 
 
 class TaskForm(forms.ModelForm):
