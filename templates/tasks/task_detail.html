@@ -3,6 +3,7 @@
 {% block title %}{{ task.title }} - TaskFlow{% endblock %}
 
 {% block content %}
+<input type="hidden" name="csrfmiddlewaretoken" value="{% csrf_token %}">
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-7">
         <div class="detail-card animate-in">
@@ -126,7 +127,12 @@
                 {% for att in attachments %}
                 <div class="d-flex align-items-center gap-2 py-2 border-bottom" id="att-{{ att.pk }}" style="border-color: var(--border-color) !important;">
                     <i class="bi bi-file-earmark" style="color: var(--text-muted);"></i>
+                    {% if att.file_exists %}
                     <a href="{{ att.file.url }}" target="_blank" class="flex-grow-1 text-decoration-none" style="color: var(--text-secondary); font-size: 0.9rem;">{{ att.filename }}</a>
+                    {% else %}
+                    <span class="flex-grow-1" style="color: var(--text-muted); font-size: 0.9rem; text-decoration: line-through;" title="File no longer available">{{ att.filename }}</span>
+                    <small style="color: var(--accent-red);"><i class="bi bi-exclamation-triangle me-1"></i>Missing</small>
+                    {% endif %}
                     <small style="color: var(--text-muted);">{{ att.uploaded_at|date:"M d, Y" }}</small>
                     <button class="btn btn-sm" style="color: var(--accent-red); opacity: 0.6;" onclick="deleteAttachment({{ att.pk }})" title="Remove">
                         <i class="bi bi-x-lg"></i>

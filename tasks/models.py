@@ -118,6 +118,13 @@ class TaskAttachment(models.Model):
     def __str__(self):
         return self.filename
 
+    @property
+    def file_exists(self):
+        try:
+            return self.file and self.file.storage.exists(self.file.name)
+        except Exception:
+            return False
+
 
 class SubTask(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='subtasks')

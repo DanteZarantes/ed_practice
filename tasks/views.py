@@ -204,7 +204,7 @@ def task_detail(request, pk):
             if attachment_form.is_valid():
                 attachment = attachment_form.save(commit=False)
                 attachment.task = task
-                attachment.filename = request.FILES['file'].name
+                attachment.filename = attachment_form.cleaned_data['file'].name
                 attachment.save()
                 messages.success(request, 'Attachment uploaded!')
                 return redirect('task_detail', pk=task.pk)
@@ -458,9 +458,12 @@ def kanban_view(request):
 def dashboard_view(request):
     # Recent activity for the dashboard
     recent_activity = Activity.objects.filter(user=request.user)[:15]
+    from django.utils import timezone
+    from datetime import timedelta
     user_tasks = Task.objects.filter(user=request.user)
-    overdue_tasks = [t for t in user_tasks if t.is_overdue]
-    due_soon_tasks = [t for t in user_tasks if t.is_due_soon]
+    today = timezone.now().date()
+    overdue_tasks = user_tasks.filter(due_date__lt=today, completed=False)
+    due_soon_tasks = user_tasks.filter(due_date__gte=today, due_date__lte=today + timedelta(days=2), completed=False)
 
     context = {
         'recent_activity': recent_activity,
