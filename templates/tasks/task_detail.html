@@ -3,7 +3,7 @@
 {% block title %}{{ task.title }} - TaskFlow{% endblock %}
 
 {% block content %}
-<input type="hidden" name="csrfmiddlewaretoken" value="{% csrf_token %}">
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-7">
         <div class="detail-card animate-in">
