@@ -222,20 +222,28 @@ def task_detail(request, pk):
 @login_required
 def task_create(request):
     if request.method == 'POST':
-        form = TaskForm(request.POST)
+        form = TaskForm(request.POST, request.FILES)
+
         if form.is_valid():
             task = form.save(commit=False)
             task.user = request.user
             task.position = Task.objects.filter(user=request.user).count()
             task.save()
+
+            if form.cleaned_data.get('attachment'):
+                TaskAttachment.objects.create(
+                    task=task,
+                    file=form.cleaned_data['attachment'],
+                    filename=form.cleaned_data['attachment'].name
+                )
+
             log_activity(request.user, task.title, 'created')
             messages.success(request, f'Task "{task.title}" created successfully!')
             return redirect('task_list')
     else:
         form = TaskForm()
+
     return render(request, 'tasks/task_form.html', {'form': form, 'title': 'Create Task'})
-
-
 @login_required
 def task_edit(request, pk):
     task = get_object_or_404(Task, pk=pk, user=request.user)

@@ -32,7 +32,6 @@
                 </div>
             </div>
 
-            <!-- Description -->
             {% if task.description %}
             <div class="mb-4 p-3" style="background: var(--bg-input); border-radius: 12px; border: 1px solid var(--border-color);">
                 <div class="detail-label">Description</div>
@@ -40,7 +39,7 @@
             </div>
             {% endif %}
 
-            <!-- Details Grid -->
+
             <div class="row g-3 mb-4">
                 <div class="col-6 col-md-3">
                     <div class="detail-label">Priority</div>
@@ -74,7 +73,6 @@
                 </div>
             </div>
 
-            <!-- Subtasks Section -->
             <div class="mb-4 p-3" style="background: var(--bg-input); border-radius: 12px; border: 1px solid var(--border-color);">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div class="detail-label mb-0">
@@ -109,7 +107,6 @@
                     {% endfor %}
                 </div>
 
-                <!-- Add Subtask Form -->
                 <form method="post" class="mt-3">
                     {% csrf_token %}
                     <div class="input-group">
@@ -121,9 +118,11 @@
                 </form>
             </div>
 
-            <!-- Attachments Section -->
+
             <div class="mb-4 p-3" style="background: var(--bg-input); border-radius: 12px; border: 1px solid var(--border-color);">
                 <div class="detail-label mb-3"><i class="bi bi-paperclip me-1"></i>Attachments</div>
+
+                <!-- Список файлов -->
                 {% for att in attachments %}
                 <div class="d-flex align-items-center gap-2 py-2 border-bottom" id="att-{{ att.pk }}" style="border-color: var(--border-color) !important;">
                     <i class="bi bi-file-earmark" style="color: var(--text-muted);"></i>
@@ -141,20 +140,32 @@
                 {% empty %}
                 <p class="small mb-2" style="color: var(--text-muted);">No attachments yet.</p>
                 {% endfor %}
-                <form method="post" enctype="multipart/form-data" class="mt-3">
+
+                <form method="post" enctype="multipart/form-data" class="mt-3" id="upload-form">
                     {% csrf_token %}
                     {% if attachment_form.file.errors %}
                     <div class="small mb-2" style="color: var(--accent-red);">{{ attachment_form.file.errors.0 }}</div>
                     {% endif %}
+
+
+                    <input type="file" name="file" id="custom-file-input" style="display: none;" accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.pdf,.txt,.doc,.docx,.xls,.xlsx">
+
+
                     <div class="input-group">
-                        {{ attachment_form.file }}
+                        <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('custom-file-input').click()">
+                            <i class="bi bi-folder2-open me-1"></i> Choose File
+                        </button>
+
+                        <input type="text" class="form-control" id="file-name-display" placeholder="No file chosen" readonly style="background: var(--bg-input); color: var(--text-secondary); border-left: none;">
+
                         <button type="submit" name="attachment_submit" class="btn btn-submit" style="border-radius: 0 12px 12px 0; padding: 0.5rem 1rem;">
-                            <i class="bi bi-upload"></i>
+                            <i class="bi bi-upload"></i> Upload
                         </button>
                     </div>
                 </form>
+            </div>
 
-            <!-- Timestamps -->
+
             <div class="border-top pt-3">
                 <div class="row g-3">
                     <div class="col-6">
@@ -168,7 +179,6 @@
                 </div>
             </div>
 
-            <!-- Actions -->
             <div class="d-flex gap-3 justify-content-center mt-4 pt-3 border-top">
                 <a href="{% url 'task_list' %}" class="btn btn-cancel">
                     <i class="bi bi-arrow-left me-1"></i> Back
@@ -211,7 +221,6 @@
                     title.style.textDecoration = 'none';
                     title.style.opacity = '1';
                 }
-                // Update progress bar
                 const bar = document.getElementById('progressBar');
                 if (bar) {
                     bar.style.width = `${data.progress}%`;
@@ -238,6 +247,7 @@
             }
         });
     }
+
     function deleteAttachment(attId) {
         fetch(`/api/attachment/${attId}/delete/`, {
             method: 'POST',
@@ -251,5 +261,24 @@
             }
         });
     }
+
+    // Логика для кастомной кнопки загрузки файлов
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInput = document.getElementById('custom-file-input');
+        const fileNameDisplay = document.getElementById('file-name-display');
+
+        if (fileInput && fileNameDisplay) {
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files.length > 0) {
+                    fileNameDisplay.value = this.files[0].name;
+                    if (this.files.length > 1) {
+                        fileNameDisplay.value += ` (+${this.files.length - 1} more)`;
+                    }
+                } else {
+                    fileNameDisplay.value = 'No file chosen';
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}
