@@ -165,6 +165,16 @@ def task_list(request):
         due_date__lt=today, completed=False
     ).count()
 
+    # Weekly progress: tasks completed this week
+    from datetime import timedelta
+    week_ago = timezone.now() - timedelta(days=7)
+    completed_this_week = user_tasks.filter(
+        status='done', updated_at__gte=week_ago
+    ).count()
+    created_this_week = user_tasks.filter(
+        created_at__gte=week_ago
+    ).count()
+
     context = {
         'tasks': page_obj,
         'page_obj': page_obj,
@@ -178,6 +188,8 @@ def task_list(request):
         'pending_tasks': pending_tasks,
         'in_progress_tasks': in_progress_tasks,
         'overdue_tasks': overdue_tasks,
+        'completed_this_week': completed_this_week,
+        'created_this_week': created_this_week,
     }
     return render(request, 'tasks/task_list.html', context)
 
