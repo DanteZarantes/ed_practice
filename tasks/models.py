@@ -51,6 +51,7 @@ class Task(models.Model):
     category = models.CharField(max_length=15, choices=CATEGORY_CHOICES, default='other')
     due_date = models.DateField(null=True, blank=True)
     position = models.IntegerField(default=0)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     completed = models.BooleanField(default=False)
@@ -76,6 +77,22 @@ class Task(models.Model):
         return False
 
     @property
+    def time_remaining(self):
+        if not self.due_date or self.completed:
+            return None
+        days = (self.due_date - timezone.now().date()).days
+        if days < 0:
+            return f"Overdue by {-days} day{'s' if -days != 1 else ''}"
+        if days == 0:
+            return "Due today"
+        if days == 1:
+            return "Due tomorrow"
+        if days < 7:
+            return f"{days} days left"
+        weeks = days // 7
+        return f"{weeks} week{'s' if weeks != 1 else ''} left"
+
+    @property
     def subtask_progress(self):
         """Returns (completed_count, total_count) for subtasks."""
         total = self.subtasks.count()
@@ -90,6 +107,23 @@ class Task(models.Model):
         if total == 0:
             return 0
         return int((done / total) * 100)
+
+
+class TaskAttachment(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='attachments')
+    file = models.FileField(upload_to='attachments/%Y/%m/')
+    filename = models.CharField(max_length=255)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.filename
+
+    @property
+    def file_exists(self):
+        try:
+            return self.file and self.file.storage.exists(self.file.name)
+        except Exception:
+            return False
 
 
 class SubTask(models.Model):

@@ -17,13 +17,15 @@ Programming/
 │   ├── urls.py                # Root URL routing
 │   ├── wsgi.py                # WSGI entry point
 │   └── asgi.py                # ASGI entry point
+├── media/                     # Uploaded files (auto-generated)
+│   └── attachments/           # Task attachments (organized by YYYY/MM/)
 ├── tasks/                     # Main application
 │   ├── __init__.py
 │   ├── admin.py               # Admin panel registration
 │   ├── apps.py                # App configuration
-│   ├── forms.py               # Task, Profile, SignUp forms
-│   ├── models.py              # Task, SubTask, Profile, Activity models
-│   ├── signals.py             # Auto-create profile on user registration
+│   ├── forms.py               # Task, Profile, SignUp, Attachment forms
+│   ├── models.py              # Task, SubTask, Profile, Activity, TaskAttachment models
+│   ├── signals.py             # Auto-create profile; delete attachment files on removal
 │   ├── urls.py                # App URL patterns
 │   ├── views.py               # Views and API endpoints
 │   ├── tests.py               # Tests
@@ -37,7 +39,7 @@ Programming/
     │   └── profile_edit.html  # Edit profile form
     └── tasks/
         ├── task_list.html     # Task list with filters and bulk actions
-        ├── task_detail.html   # Single task view with subtasks
+        ├── task_detail.html   # Single task view with subtasks and attachments
         ├── task_form.html     # Create/Edit task form
         ├── task_confirm_delete.html  # Delete confirmation
         ├── kanban.html        # Kanban board (drag-and-drop)
@@ -57,6 +59,8 @@ Programming/
 - **Dark/Light Theme** - Toggle with button or keyboard shortcut, persisted in localStorage
 - **Keyboard Shortcuts** - `N` (new task), `/` (search), `T` (theme), `?` (show all shortcuts)
 - **Due Date Alerts** - Visual indicators for overdue and upcoming tasks
+- **Time Remaining** - Calculated countdown shown on task detail (e.g. "3 days left", "Due today", "Overdue by 2 days")
+- **Task Attachments** - Upload and manage files on any task (images, PDF, Word, Excel, ZIP, TXT — max 100MB per file)
 - **User Profiles** - Custom avatar color, bio, location
 
 ## Prerequisites

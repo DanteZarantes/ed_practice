@@ -3,6 +3,7 @@
 {% block title %}{{ task.title }} - TaskFlow{% endblock %}
 
 {% block content %}
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-7">
         <div class="detail-card animate-in">
@@ -31,7 +32,6 @@
                 </div>
             </div>
 
-            <!-- Description -->
             {% if task.description %}
             <div class="mb-4 p-3" style="background: var(--bg-input); border-radius: 12px; border: 1px solid var(--border-color);">
                 <div class="detail-label">Description</div>
@@ -39,7 +39,7 @@
             </div>
             {% endif %}
 
-            <!-- Details Grid -->
+
             <div class="row g-3 mb-4">
                 <div class="col-6 col-md-3">
                     <div class="detail-label">Priority</div>
@@ -58,13 +58,21 @@
                 </div>
                 <div class="col-6 col-md-3">
                     <div class="detail-label">Due Date</div>
-                    <div class="detail-value {% if task.is_overdue %}{% endif %}" {% if task.is_overdue %}style="color: var(--accent-red);"{% elif task.is_due_soon %}style="color: var(--accent-amber);"{% endif %}>
-                        {% if task.due_date %}{{ task.due_date|date:"M d, Y" }}{% else %}<span style="color: var(--text-muted);">Not set</span>{% endif %}
+                    <div class="detail-value" {% if task.is_overdue %}style="color: var(--accent-red);"{% elif task.is_due_soon %}style="color: var(--accent-amber);"{% endif %}>
+                        {% if task.due_date %}
+                            {{ task.due_date|date:"M d, Y" }}
+                            {% if task.time_remaining %}
+                            <div class="small mt-1" {% if task.is_overdue %}style="color: var(--accent-red);"{% elif task.is_due_soon %}style="color: var(--accent-amber);"{% else %}style="color: var(--text-muted);"{% endif %}>
+                                <i class="bi bi-clock me-1"></i>{{ task.time_remaining }}
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            <span style="color: var(--text-muted);">Not set</span>
+                        {% endif %}
                     </div>
                 </div>
             </div>
 
-            <!-- Subtasks Section -->
             <div class="mb-4 p-3" style="background: var(--bg-input); border-radius: 12px; border: 1px solid var(--border-color);">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div class="detail-label mb-0">
@@ -99,19 +107,65 @@
                     {% endfor %}
                 </div>
 
-                <!-- Add Subtask Form -->
                 <form method="post" class="mt-3">
                     {% csrf_token %}
                     <div class="input-group">
                         {{ subtask_form.title }}
-                        <button type="submit" class="btn btn-submit" style="border-radius: 0 12px 12px 0; padding: 0.5rem 1rem;">
+                        <button type="submit" name="subtask_submit" class="btn btn-submit" style="border-radius: 0 12px 12px 0; padding: 0.5rem 1rem;">
                             <i class="bi bi-plus-lg"></i>
                         </button>
                     </div>
                 </form>
             </div>
 
-            <!-- Timestamps -->
+
+            <div class="mb-4 p-3" style="background: var(--bg-input); border-radius: 12px; border: 1px solid var(--border-color);">
+                <div class="detail-label mb-3"><i class="bi bi-paperclip me-1"></i>Attachments</div>
+
+                <!-- Список файлов -->
+                {% for att in attachments %}
+                <div class="d-flex align-items-center gap-2 py-2 border-bottom" id="att-{{ att.pk }}" style="border-color: var(--border-color) !important;">
+                    <i class="bi bi-file-earmark" style="color: var(--text-muted);"></i>
+                    {% if att.file_exists %}
+                    <a href="{{ att.file.url }}" target="_blank" class="flex-grow-1 text-decoration-none" style="color: var(--text-secondary); font-size: 0.9rem;">{{ att.filename }}</a>
+                    {% else %}
+                    <span class="flex-grow-1" style="color: var(--text-muted); font-size: 0.9rem; text-decoration: line-through;" title="File no longer available">{{ att.filename }}</span>
+                    <small style="color: var(--accent-red);"><i class="bi bi-exclamation-triangle me-1"></i>Missing</small>
+                    {% endif %}
+                    <small style="color: var(--text-muted);">{{ att.uploaded_at|date:"M d, Y" }}</small>
+                    <button class="btn btn-sm" style="color: var(--accent-red); opacity: 0.6;" onclick="deleteAttachment({{ att.pk }})" title="Remove">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                {% empty %}
+                <p class="small mb-2" style="color: var(--text-muted);">No attachments yet.</p>
+                {% endfor %}
+
+                <form method="post" enctype="multipart/form-data" class="mt-3" id="upload-form">
+                    {% csrf_token %}
+                    {% if attachment_form.file.errors %}
+                    <div class="small mb-2" style="color: var(--accent-red);">{{ attachment_form.file.errors.0 }}</div>
+                    {% endif %}
+
+
+                    <input type="file" name="file" id="custom-file-input" style="display: none;" accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.pdf,.txt,.doc,.docx,.xls,.xlsx">
+
+
+                    <div class="input-group">
+                        <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('custom-file-input').click()">
+                            <i class="bi bi-folder2-open me-1"></i> Choose File
+                        </button>
+
+                        <input type="text" class="form-control" id="file-name-display" placeholder="No file chosen" readonly style="background: var(--bg-input); color: var(--text-secondary); border-left: none;">
+
+                        <button type="submit" name="attachment_submit" class="btn btn-submit" style="border-radius: 0 12px 12px 0; padding: 0.5rem 1rem;">
+                            <i class="bi bi-upload"></i> Upload
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+
             <div class="border-top pt-3">
                 <div class="row g-3">
                     <div class="col-6">
@@ -125,7 +179,6 @@
                 </div>
             </div>
 
-            <!-- Actions -->
             <div class="d-flex gap-3 justify-content-center mt-4 pt-3 border-top">
                 <a href="{% url 'task_list' %}" class="btn btn-cancel">
                     <i class="bi bi-arrow-left me-1"></i> Back
@@ -168,7 +221,6 @@
                     title.style.textDecoration = 'none';
                     title.style.opacity = '1';
                 }
-                // Update progress bar
                 const bar = document.getElementById('progressBar');
                 if (bar) {
                     bar.style.width = `${data.progress}%`;
@@ -195,5 +247,38 @@
             }
         });
     }
+
+    function deleteAttachment(attId) {
+        fetch(`/api/attachment/${attId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRF() },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const el = document.getElementById(`att-${attId}`);
+                if (el) el.remove();
+            }
+        });
+    }
+
+    // Логика для кастомной кнопки загрузки файлов
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInput = document.getElementById('custom-file-input');
+        const fileNameDisplay = document.getElementById('file-name-display');
+
+        if (fileInput && fileNameDisplay) {
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files.length > 0) {
+                    fileNameDisplay.value = this.files[0].name;
+                    if (this.files.length > 1) {
+                        fileNameDisplay.value += ` (+${this.files.length - 1} more)`;
+                    }
+                } else {
+                    fileNameDisplay.value = 'No file chosen';
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}

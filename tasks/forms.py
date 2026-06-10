@@ -1,10 +1,47 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
-from .models import Task, Profile, SubTask
+from django.forms import inlineformset_factory
+from .models import Task, Profile, SubTask, TaskAttachment
+
+
+class AttachmentForm(forms.ModelForm):
+    class Meta:
+        model = TaskAttachment
+        fields = ['file']
+        widgets = {
+            'file': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+        }
+
+    def clean_file(self):
+        file = self.cleaned_data.get('file')
+        if not file:
+            return file
+        allowed = [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+            'application/pdf', 'text/plain',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]
+        if file.content_type not in allowed:
+            raise forms.ValidationError('Unsupported file type.')
+        if file.size > 100 * 1024 * 1024:
+            raise forms.ValidationError('File size must not exceed 100MB.')
+        return file
 
 
 class TaskForm(forms.ModelForm):
+    attachment = forms.FileField(
+        required=False,
+        label="Attach a File (Optional)",
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'form-control',
+            'accept': '.jpg,.jpeg,.png,.gif,.webp,.svg,.pdf,.txt,.doc,.docx,.xls,.xlsx',
+        })
+    )
+
     class Meta:
         model = Task
         fields = ['title', 'description', 'priority', 'status', 'category', 'due_date']
@@ -18,21 +55,11 @@ class TaskForm(forms.ModelForm):
                 'placeholder': 'Describe your task...',
                 'rows': 4,
             }),
-            'priority': forms.Select(attrs={
-                'class': 'form-select',
-            }),
-            'status': forms.Select(attrs={
-                'class': 'form-select',
-            }),
-            'category': forms.Select(attrs={
-                'class': 'form-select',
-            }),
-            'due_date': forms.DateInput(attrs={
-                'class': 'form-control',
-                'type': 'date',
-            }),
+            'priority': forms.Select(attrs={'class': 'form-select'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'category': forms.Select(attrs={'class': 'form-select'}),
+            'due_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
-
 
 class SubTaskForm(forms.ModelForm):
     class Meta:
@@ -126,3 +153,12 @@ class ProfileForm(forms.ModelForm):
             self.user.save()
             profile.save()
         return profile
+
+
+AttachmentFormSet = inlineformset_factory(
+    Task,
+    TaskAttachment,
+    form=AttachmentForm,
+    extra=1,
+    can_delete=True
+)

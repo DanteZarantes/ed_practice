@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Task, Profile, SubTask, Activity
+from .models import Task, Profile, SubTask, Activity, TaskAttachment
 
 
 class SubTaskInline(admin.TabularInline):
@@ -35,3 +35,9 @@ class ActivityAdmin(admin.ModelAdmin):
     list_filter = ['action']
     search_fields = ['task_title', 'user__username']
     readonly_fields = ['timestamp']
+
+
+@admin.register(TaskAttachment)
+class TaskAttachmentAdmin(admin.ModelAdmin):
+    list_display = ['filename', 'task', 'uploaded_at']
+    readonly_fields = ['uploaded_at']
