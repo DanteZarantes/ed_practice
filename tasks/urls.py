@@ -13,6 +13,12 @@ urlpatterns = [
     # Kanban
     path('kanban/', views.kanban_view, name='kanban'),
 
+    # Trash
+    path('trash/', views.trash_view, name='trash'),
+    path('api/task/<int:pk>/restore/', views.task_restore, name='task_restore'),
+    path('api/task/<int:pk>/permanent-delete/', views.task_permanent_delete, name='task_permanent_delete'),
+    path('api/trash/empty/', views.trash_empty, name='trash_empty'),
+
     # AJAX endpoints
     path('api/task/<int:pk>/toggle/', views.task_toggle_ajax, name='task_toggle_ajax'),
     path('api/task/<int:pk>/delete/', views.task_delete_ajax, name='task_delete_ajax'),

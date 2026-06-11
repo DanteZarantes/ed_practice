@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}Trash - TaskFlow{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 animate-in">
+    <h2 class="fw-bold" style="color: var(--text-primary);">
+        <i class="bi bi-trash3 me-2" style="color: var(--accent-red);"></i>Trash
+        {% if trash_count > 0 %}
+        <span class="badge rounded-pill ms-2" style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size: 0.8rem;">{{ trash_count }}</span>
+        {% endif %}
+    </h2>
+    <div class="d-flex gap-2">
+        {% if deleted_tasks %}
+        <button class="btn" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; border-radius: 10px; font-weight: 600; font-size: 0.85rem;" onclick="emptyTrash()">
+            <i class="bi bi-trash3-fill me-1"></i>Empty Trash
+        </button>
+        {% endif %}
+        <a href="{% url 'task_list' %}" class="btn btn-cancel">
+            <i class="bi bi-arrow-left me-1"></i> Back to Tasks
+        </a>
+    </div>
+</div>
+
+<form id="trashForm">{% csrf_token %}</form>
+
+{% if deleted_tasks %}
+<p class="mb-4" style="color: var(--text-muted); font-size: 0.85rem;">
+    <i class="bi bi-info-circle me-1"></i>Deleted tasks are kept here. You can restore them or permanently delete them.
+</p>
+
+<div class="tasks-container">
+    {% for task in deleted_tasks %}
+    <div class="task-card priority-{{ task.priority }} animate-in" id="trash-task-{{ task.pk }}" style="animation-delay: {{ forloop.counter0 }}00ms; opacity: 0.8;">
+        <div class="row align-items-center">
+            <div class="col-md-7">
+                <div>
+                    <h5 class="task-title mb-1" style="text-decoration: line-through; color: var(--text-muted);">{{ task.title }}</h5>
+                    {% if task.description %}
+                    <p class="task-description mb-2">{{ task.description|truncatewords:15 }}</p>
+                    {% endif %}
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge-priority badge-{{ task.priority }}">{{ task.get_priority_display }}</span>
+                        <span class="badge-category">{{ task.get_category_display }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 text-md-center mt-3 mt-md-0">
+                <div class="due-date">
+                    <i class="bi bi-trash3 me-1" style="color: var(--accent-red);"></i>
+                    Deleted {{ task.deleted_at|timesince }} ago
+                </div>
+            </div>
+            <div class="col-md-2 text-md-end mt-3 mt-md-0">
+                <div class="task-actions d-flex gap-1 justify-content-md-end">
+                    <button class="btn btn-toggle" title="Restore" aria-label="Restore task" onclick="restoreTask({{ task.pk }})">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </button>
+                    <button class="btn btn-delete" title="Delete permanently" aria-label="Delete permanently" onclick="permanentDelete({{ task.pk }})">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<div class="empty-state animate-in">
+    <i class="bi bi-trash3" style="color: var(--text-muted);"></i>
+    <h4>Trash is empty</h4>
+    <p>Deleted tasks will appear here so you can restore them if needed.</p>
+    <a href="{% url 'task_list' %}" class="btn btn-cancel mt-3">
+        <i class="bi bi-arrow-left me-1"></i> Back to Tasks
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function getCSRF() {
+        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+
+    function restoreTask(taskId) {
+        fetch(`/api/task/${taskId}/restore/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRF() },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const card = document.getElementById(`trash-task-${taskId}`);
+                card.style.transition = 'all 0.3s ease';
+                card.style.opacity = '0';
+                card.style.transform = 'translateX(-50px)';
+                setTimeout(() => card.remove(), 300);
+                showToast(data.message);
+            }
+        });
+    }
+
+    function permanentDelete(taskId) {
+        fetch(`/api/task/${taskId}/permanent-delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRF() },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const card = document.getElementById(`trash-task-${taskId}`);
+                card.style.transition = 'all 0.3s ease';
+                card.style.opacity = '0';
+                card.style.transform = 'translateX(50px)';
+                setTimeout(() => card.remove(), 300);
+                showToast(data.message);
+            }
+        });
+    }
+
+    function emptyTrash() {
+        if (!confirm('Permanently delete ALL items in trash? This cannot be undone.')) return;
+        fetch('/api/trash/empty/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRF() },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message);
+                setTimeout(() => window.location.reload(), 500);
+            }
+        });
+    }
+</script>
+{% endblock %}

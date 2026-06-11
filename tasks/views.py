@@ -8,6 +8,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Count, F
 from django.db.models.functions import TruncDate
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.http import require_POST, require_http_methods
 from .models import Task, Profile, SubTask, Activity, TaskAttachment
 from .forms import TaskForm, SignUpForm, ProfileForm, SubTaskForm, AttachmentForm
@@ -65,7 +66,7 @@ def logout_view(request):
 @login_required
 def profile_view(request):
     profile, _ = Profile.objects.get_or_create(user=request.user)
-    user_tasks = Task.objects.filter(user=request.user)
+    user_tasks = Task.objects.filter(user=request.user, is_deleted=False)
 
     stats = {
         'total': user_tasks.count(),
@@ -103,7 +104,7 @@ def profile_edit(request):
 
 @login_required
 def task_list(request):
-    tasks = Task.objects.filter(user=request.user)
+    tasks = Task.objects.filter(user=request.user, is_deleted=False)
 
     # Search
     query = request.GET.get('q', '')
@@ -153,7 +154,7 @@ def task_list(request):
     page_obj = paginator.get_page(page_number)
 
     # Statistics for current user (use aggregation, not Python loop)
-    user_tasks = Task.objects.filter(user=request.user)
+    user_tasks = Task.objects.filter(user=request.user, is_deleted=False)
     total_tasks = user_tasks.count()
     completed_tasks = user_tasks.filter(status='done').count()
     pending_tasks = user_tasks.filter(status='todo').count()
@@ -276,9 +277,11 @@ def task_delete(request, pk):
     task = get_object_or_404(Task, pk=pk, user=request.user)
     if request.method == 'POST':
         title = task.title
-        task.delete()
+        task.is_deleted = True
+        task.deleted_at = timezone.now()
+        task.save()
         log_activity(request.user, title, 'deleted')
-        messages.success(request, f'Task "{title}" deleted successfully!')
+        messages.success(request, f'Task "{title}" moved to trash.')
         return redirect('task_list')
     return render(request, 'tasks/task_confirm_delete.html', {'task': task})
 
@@ -341,12 +344,14 @@ def task_toggle_ajax(request, pk):
 @login_required
 @require_POST
 def task_delete_ajax(request, pk):
-    """AJAX endpoint to delete a task without page reload."""
+    """AJAX endpoint to soft-delete a task without page reload."""
     task = get_object_or_404(Task, pk=pk, user=request.user)
     title = task.title
-    task.delete()
+    task.is_deleted = True
+    task.deleted_at = timezone.now()
+    task.save()
     log_activity(request.user, title, 'deleted')
-    return JsonResponse({'success': True, 'message': f'Task "{title}" deleted.'})
+    return JsonResponse({'success': True, 'message': f'Task "{title}" moved to trash.'})
 
 
 @login_required
@@ -442,8 +447,8 @@ def bulk_action(request):
             for task in tasks:
                 log_activity(request.user, task.title, 'deleted')
                 count += 1
-            tasks.delete()
-            return JsonResponse({'success': True, 'message': f'{count} task{"s" if count != 1 else ""} deleted.'})
+            tasks.update(is_deleted=True, deleted_at=timezone.now())
+            return JsonResponse({'success': True, 'message': f'{count} task{"s" if count != 1 else ""} moved to trash.'})
         elif action in dict(Task.STATUS_CHOICES):
             count = tasks.count()
             tasks.update(status=action, completed=(action == 'done'))
@@ -459,7 +464,7 @@ def bulk_action(request):
 @login_required
 def kanban_view(request):
     """Kanban board view with drag-and-drop columns."""
-    tasks = Task.objects.filter(user=request.user)
+    tasks = Task.objects.filter(user=request.user, is_deleted=False)
     todo_tasks = tasks.filter(status='todo')
     in_progress_tasks = tasks.filter(status='in_progress')
     done_tasks = tasks.filter(status='done')
@@ -480,7 +485,7 @@ def dashboard_view(request):
     recent_activity = Activity.objects.filter(user=request.user)[:15]
     from django.utils import timezone
     from datetime import timedelta
-    user_tasks = Task.objects.filter(user=request.user)
+    user_tasks = Task.objects.filter(user=request.user, is_deleted=False)
     today = timezone.now().date()
     overdue_tasks = user_tasks.filter(due_date__lt=today, completed=False)
     due_soon_tasks = user_tasks.filter(due_date__gte=today, due_date__lte=today + timedelta(days=2), completed=False)
@@ -496,7 +501,7 @@ def dashboard_view(request):
 @login_required
 def dashboard_data(request):
     """API endpoint returning chart data for D3.js visualizations."""
-    user_tasks = Task.objects.filter(user=request.user)
+    user_tasks = Task.objects.filter(user=request.user, is_deleted=False)
 
     # Status distribution
     status_data = list(
@@ -537,3 +542,47 @@ def dashboard_data(request):
         }
     }
     return JsonResponse(data)
+
+
+# ─── Trash Views ──────────────────────────────────────────────────────────────
+
+@login_required
+def trash_view(request):
+    """View showing soft-deleted tasks that can be restored or permanently deleted."""
+    deleted_tasks = Task.objects.filter(user=request.user, is_deleted=True).order_by('-deleted_at')
+    context = {
+        'deleted_tasks': deleted_tasks,
+        'trash_count': deleted_tasks.count(),
+    }
+    return render(request, 'tasks/trash.html', context)
+
+
+@login_required
+@require_POST
+def task_restore(request, pk):
+    """Restore a soft-deleted task."""
+    task = get_object_or_404(Task, pk=pk, user=request.user, is_deleted=True)
+    task.is_deleted = False
+    task.deleted_at = None
+    task.save()
+    return JsonResponse({'success': True, 'message': f'Task "{task.title}" restored.'})
+
+
+@login_required
+@require_POST
+def task_permanent_delete(request, pk):
+    """Permanently delete a task from trash."""
+    task = get_object_or_404(Task, pk=pk, user=request.user, is_deleted=True)
+    title = task.title
+    task.delete()
+    return JsonResponse({'success': True, 'message': f'Task "{title}" permanently deleted.'})
+
+
+@login_required
+@require_POST
+def trash_empty(request):
+    """Permanently delete all tasks in trash."""
+    deleted = Task.objects.filter(user=request.user, is_deleted=True)
+    count = deleted.count()
+    deleted.delete()
+    return JsonResponse({'success': True, 'message': f'{count} task{"s" if count != 1 else ""} permanently deleted.'})
